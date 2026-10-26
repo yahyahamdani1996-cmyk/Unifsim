@@ -1,4 +1,4 @@
-# pcgsim
+# unifsim
 
 Exact, independently validated simulator for real-time scheduling on uniform
 multiprocessor platforms (DP-fair and non DP-fair algorithms).

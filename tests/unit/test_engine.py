@@ -3,11 +3,11 @@ from fractions import Fraction as F
 
 import pytest
 
-from pcgsim.engine import DeadlineMiss, InvalidDecision, simulate
-from pcgsim.model import Platform, Task, TaskSet
-from pcgsim.schedulers import Decision, Scheduler
-from pcgsim.schedulers.global_ import GEDF
-from pcgsim.validate import validate
+from unifsim.engine import DeadlineMiss, InvalidDecision, simulate
+from unifsim.model import Platform, Task, TaskSet
+from unifsim.schedulers import Decision, Scheduler
+from unifsim.schedulers.global_ import GEDF
+from unifsim.validate import validate
 
 
 def test_exact_completion_on_fast_processor():

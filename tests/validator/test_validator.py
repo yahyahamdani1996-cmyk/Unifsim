@@ -5,11 +5,11 @@ from fractions import Fraction as F
 
 import pytest
 
-from pcgsim.engine import simulate
-from pcgsim.model import Job, Platform, Task, TaskSet
-from pcgsim.schedulers.global_ import GEDF
-from pcgsim.trace import Segment, Trace
-from pcgsim.validate import ValidationError, validate
+from unifsim.engine import simulate
+from unifsim.model import Job, Platform, Task, TaskSet
+from unifsim.schedulers.global_ import GEDF
+from unifsim.trace import Segment, Trace
+from unifsim.validate import ValidationError, validate
 
 TS = TaskSet((Task(0, 2, 4), Task(1, 3, 6)), Platform((2, 1)))
 J0 = Job.of(TS.task(0), 0)   # [0, 4), C = 2

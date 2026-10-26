@@ -3,7 +3,7 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pcgsim"
+name = "unifsim"
 version = "0.1.0"
 description = "Exact, independently validated simulator for real-time scheduling on uniform multiprocessors"
 readme = "README.md"

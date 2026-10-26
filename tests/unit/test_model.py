@@ -2,7 +2,7 @@ from fractions import Fraction as F
 
 import pytest
 
-from pcgsim.model import Job, Platform, Task, TaskSet
+from unifsim.model import Job, Platform, Task, TaskSet
 
 
 def test_task_rejects_float():
