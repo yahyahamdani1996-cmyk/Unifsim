@@ -1,4 +1,4 @@
-"""Budget policies for DP-fair schedulers.
+"""Budget (allocation) policies for deadline-partitioned (DP) schedulers.
 
 Signature: policy(jobs, plane, scheduler, view) -> list[Fraction], one budget
 per job, in the order of `jobs`. `plane` = (t0, t1).
@@ -9,8 +9,8 @@ from __future__ import annotations
 from fractions import Fraction
 
 
-def nominal(jobs, plane, scheduler, view):
-    """DP-fair allocation: b_i = u_i * (t1 - t0)."""
+def dp_fair(jobs, plane, scheduler, view):
+    """DP-fair allocation (Levin et al., RTSS 2010): b_i = u_i * (t1 - t0)."""
     t0, t1 = plane
     length = t1 - t0
     return [scheduler.taskset.task(j.task_id).u * length for j in jobs]

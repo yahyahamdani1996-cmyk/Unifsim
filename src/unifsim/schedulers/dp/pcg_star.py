@@ -1,14 +1,14 @@
-"""PCG* = DPFair + the PCG* local scheduler (ECRTS 2026)."""
+"""PCG* = DP + the PCG* local scheduler (ECRTS 2026)."""
 
-from .base import DPFair
-from .budgets import nominal
+from .base import DP
+from .budgets import dp_fair
 from .local.pcg_star import pcg_star
 
 
-class PCGStar(DPFair):
+class PCGStar(DP):
     name = "pcg_star"
 
-    def __init__(self, budget=nominal):
+    def __init__(self, budget=dp_fair):
         super().__init__(budget)
 
     def schedule_plane(self, budgets, speeds, length):

@@ -18,7 +18,7 @@ class Segment:
 
 @dataclass(frozen=True)
 class PlaneRecord:
-    """A TL-plane [t0, t1) and the budget given to each job (DP-fair only)."""
+    """A TL-plane [t0, t1) and the budget given to each job (deadline-partitioned schedulers only)."""
 
     t0: Fraction
     t1: Fraction

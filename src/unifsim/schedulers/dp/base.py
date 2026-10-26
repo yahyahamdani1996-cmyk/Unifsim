@@ -1,4 +1,4 @@
-"""DPFair: base class of all DP-fair (TL-plane) schedulers.
+"""DP: base class of all deadline-partitioned (TL-plane) schedulers.
 
 It implements the Scheduler interface once:
   - TL-plane boundaries = all deadlines in (0, H], plus 0 and H
@@ -7,7 +7,8 @@ It implements the Scheduler interface once:
     then plan = self.schedule_plane(budgets, speeds, t1 - t0);
   - decide(t) replays the plan in force at t.
 
-A subclass defines schedule_plane(). The budget policy is a parameter.
+A subclass defines schedule_plane(). The allocation (budget policy) is a
+parameter: dp_fair (b = u * length) by default, so DP + dp_fair = DP-fair.
 """
 
 from __future__ import annotations
@@ -17,13 +18,13 @@ from fractions import Fraction
 from ...engine.errors import BudgetInfeasible
 from ...trace.trace import PlaneRecord
 from ..base import Decision, Scheduler
-from .budgets import nominal
+from .budgets import dp_fair
 
 
-class DPFair(Scheduler):
-    name = "dpfair"
+class DP(Scheduler):
+    name = "dp"
 
-    def __init__(self, budget=nominal):
+    def __init__(self, budget=dp_fair):
         self.budget = budget
 
     # -------------------------------------------------------------- to define
@@ -36,7 +37,7 @@ class DPFair(Scheduler):
     def init(self, taskset, horizon):
         super().init(taskset, horizon)
         if not all(t.implicit for t in taskset.tasks):
-            raise NotImplementedError("DPFair v1: implicit deadlines only")
+            raise NotImplementedError("DP v1: implicit deadlines only")
         bounds = {Fraction(0), Fraction(horizon)}
         for t in taskset.tasks:
             d = t.T

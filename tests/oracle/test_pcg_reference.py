@@ -1,4 +1,4 @@
-"""Oracle: unifsim PCG* (nominal budget) must reproduce the reference PCG
+"""Oracle: unifsim PCG* (dp_fair budget) must reproduce the reference PCG
 implementation (Bertout & Richard) segment by segment.
 
 Skipped unless the reference package `pcg` is importable, e.g.
@@ -18,8 +18,8 @@ from pcg.scheduler import pcg_star as ref_pcg_star  # noqa: E402
 
 from unifsim.engine import simulate  # noqa: E402
 from unifsim.model import Platform, Task, System  # noqa: E402
-from unifsim.schedulers.dpfair import PCGStar  # noqa: E402
-from unifsim.schedulers.dpfair.local import pcg_star  # noqa: E402
+from unifsim.schedulers.dp import PCGStar  # noqa: E402
+from unifsim.schedulers.dp.local import pcg_star  # noqa: E402
 from unifsim.validate import validate  # noqa: E402
 
 PERIODS = [2, 3, 4, 5, 6, 10, 12]

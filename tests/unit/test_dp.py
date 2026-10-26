@@ -5,7 +5,7 @@ import pytest
 
 from unifsim.engine import BudgetInfeasible, simulate
 from unifsim.model import Platform, Task, System
-from unifsim.schedulers.dpfair import PCGStar
+from unifsim.schedulers.dp import PCGStar
 from unifsim.validate import validate
 
 PERIODS = [2, 3, 4, 5, 6, 10, 12]
@@ -43,7 +43,7 @@ def test_pcg_star_random_feasible(seed):
     speeds = ts.platform.speeds
     for plane in tr.planes:
         for job, b in plane.budgets:
-            # nominal budget, executed exactly inside its plane
+            # dp_fair budget, executed exactly inside its plane
             assert b == ts.task(job.task_id).u * (plane.t1 - plane.t0)
             assert _work_in(tr, job, plane.t0, plane.t1, speeds) == b
 

@@ -50,5 +50,5 @@ class Scheduler:
         raise NotImplementedError
 
     def trace_planes(self):
-        """DP-fair schedulers return their PlaneRecords; others none."""
+        """Deadline-partitioned (DP) schedulers return their PlaneRecords; others none."""
         return []
