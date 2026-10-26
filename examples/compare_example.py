@@ -14,6 +14,7 @@ system = System(
     platform=Platform((6, 3, 2, 2, 1)),                      # speeds, fastest first
 )
 
-path = compare(system, ["pcg_star", "g_edf"], "report.html", title="Running example")
+path = compare(system, ["pcg_star", "wc_pcg_star", "g_edf"], "report.html",
+               title="Running example: PCG* vs WC-PCG* vs G-EDF")
 print("report written to", path.resolve())
 webbrowser.open(path.resolve().as_uri())
