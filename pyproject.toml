@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pcgsim"
+version = "0.1.0"
+description = "Exact, independently validated simulator for real-time scheduling on uniform multiprocessors"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Yahya Hamdani" }]
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+lp = ["pplpy"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
