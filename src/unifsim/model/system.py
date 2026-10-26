@@ -16,7 +16,7 @@ FORMAT_VERSION = 1
 
 
 @dataclass(frozen=True)
-class TaskSet:
+class System:
     tasks: tuple[Task, ...]
     platform: Platform
     meta: dict = field(default_factory=dict, compare=False, hash=False)
@@ -98,22 +98,22 @@ class TaskSet:
         return json.dumps(d, indent=2, sort_keys=True)
 
     @staticmethod
-    def from_dict(d: dict) -> "TaskSet":
+    def from_dict(d: dict) -> "System":
         if d.get("format_version") != FORMAT_VERSION:
             raise ValueError(f"unsupported format_version {d.get('format_version')}")
         platform = Platform(tuple(d["speeds"]))
         tasks = tuple(
             Task(t["id"], t["C"], t["T"], t.get("D")) for t in d["tasks"]
         )
-        return TaskSet(tasks, platform, d.get("meta", {}))
+        return System(tasks, platform, d.get("meta", {}))
 
     @staticmethod
-    def from_json(text: str) -> "TaskSet":
-        return TaskSet.from_dict(json.loads(text))
+    def from_json(text: str) -> "System":
+        return System.from_dict(json.loads(text))
 
     @staticmethod
-    def load(path) -> "TaskSet":
-        return TaskSet.from_json(Path(path).read_text())
+    def load(path) -> "System":
+        return System.from_json(Path(path).read_text())
 
     def save(self, path) -> None:
         Path(path).write_text(self.to_json())

@@ -8,14 +8,14 @@ from __future__ import annotations
 
 from fractions import Fraction
 
-from ..model.taskset import TaskSet
+from ..model.system import System
 from ..schedulers.base import Decision, Scheduler, View
 from ..trace.trace import Trace
 from .errors import DeadlineMiss, InvalidDecision
 
 
 class Engine:
-    def __init__(self, taskset: TaskSet, scheduler: Scheduler, horizon=None):
+    def __init__(self, taskset: System, scheduler: Scheduler, horizon=None):
         self.taskset = taskset
         self.scheduler = scheduler
         self.platform = taskset.platform
@@ -113,5 +113,5 @@ class Engine:
             raise InvalidDecision(f"t={t}: wake_at={d.wake_at} must be > t")
 
 
-def simulate(taskset: TaskSet, scheduler: Scheduler, horizon=None) -> Trace:
+def simulate(taskset: System, scheduler: Scheduler, horizon=None) -> Trace:
     return Engine(taskset, scheduler, horizon).run()

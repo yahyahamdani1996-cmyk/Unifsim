@@ -17,7 +17,7 @@ from pcg.rt_models import Task as RefTask  # noqa: E402
 from pcg.scheduler import pcg_star as ref_pcg_star  # noqa: E402
 
 from unifsim.engine import simulate  # noqa: E402
-from unifsim.model import Platform, Task, TaskSet  # noqa: E402
+from unifsim.model import Platform, Task, System  # noqa: E402
 from unifsim.schedulers.dpfair import PCGStar  # noqa: E402
 from unifsim.schedulers.dpfair.local import pcg_star  # noqa: E402
 from unifsim.validate import validate  # noqa: E402
@@ -26,7 +26,7 @@ PERIODS = [2, 3, 4, 5, 6, 10, 12]
 
 
 def _ours(tasks, speeds):
-    ts = TaskSet(tuple(Task(i, C, T) for i, (C, T) in enumerate(tasks)), Platform(tuple(speeds)))
+    ts = System(tuple(Task(i, C, T) for i, (C, T) in enumerate(tasks)), Platform(tuple(speeds)))
     tr = simulate(ts, PCGStar())
     validate(ts, tr)
     return ts, {(s.proc, s.job.task_id, s.job.k, s.start, s.end) for s in tr.segments}
@@ -48,7 +48,7 @@ def _random_instance(rng):
         w = [rng.randint(1, 30) for _ in range(n)]
         u = [load * S * wi / sum(w) for wi in w]
         tasks = [(ui * T, T) for ui, T in zip(u, (rng.choice(PERIODS) for _ in u))]
-        ts = TaskSet(tuple(Task(i, C, T) for i, (C, T) in enumerate(tasks)), Platform(tuple(speeds)))
+        ts = System(tuple(Task(i, C, T) for i, (C, T) in enumerate(tasks)), Platform(tuple(speeds)))
         if ts.horvath_feasible():
             return tasks, speeds
     pytest.skip("no feasible instance drawn")

@@ -4,7 +4,7 @@ from fractions import Fraction as F
 import pytest
 
 from unifsim.engine import BudgetInfeasible, simulate
-from unifsim.model import Platform, Task, TaskSet
+from unifsim.model import Platform, Task, System
 from unifsim.schedulers.dpfair import PCGStar
 from unifsim.validate import validate
 
@@ -22,7 +22,7 @@ def _random_feasible(rng):
             Task(i, load * sum(speeds) * wi / sum(w) * T, T)
             for i, (wi, T) in enumerate(zip(w, (rng.choice(PERIODS) for _ in w)))
         )
-        ts = TaskSet(tasks, Platform(speeds))
+        ts = System(tasks, Platform(speeds))
         if ts.horvath_feasible():
             return ts
 
@@ -49,13 +49,13 @@ def test_pcg_star_random_feasible(seed):
 
 
 def test_planes_cover_hyperperiod():
-    ts = TaskSet((Task(0, 3, 2), Task(1, 2, 3), Task(2, 5, 6)), Platform((2, 1)))
+    ts = System((Task(0, 3, 2), Task(1, 2, 3), Task(2, 5, 6)), Platform((2, 1)))
     tr = simulate(ts, PCGStar())
     assert [(p.t0, p.t1) for p in tr.planes] == [(0, 2), (2, 3), (3, 4), (4, 6)]
 
 
 def test_constrained_deadlines_refused():
-    ts = TaskSet((Task(0, 1, 4, D=3),), Platform((1,)))
+    ts = System((Task(0, 1, 4, D=3),), Platform((1,)))
     with pytest.raises(NotImplementedError):
         simulate(ts, PCGStar())
 
@@ -63,6 +63,6 @@ def test_constrained_deadlines_refused():
 def test_infeasible_budget_refused():
     def too_much(jobs, plane, scheduler, view):
         return [view.remaining(j) for j in jobs]        # whole job in the first plane
-    ts = TaskSet((Task(0, 4, 4), Task(1, 4, 4), Task(2, 1, 2)), Platform((1, 1)))
+    ts = System((Task(0, 4, 4), Task(1, 4, 4), Task(2, 1, 2)), Platform((1, 1)))
     with pytest.raises(BudgetInfeasible):
         simulate(ts, PCGStar(budget=too_much))

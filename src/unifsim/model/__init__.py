@@ -1,5 +1,5 @@
 from .platform import Platform
 from .task import Job, Task, exact
-from .taskset import TaskSet
+from .system import System
 
-__all__ = ["Job", "Platform", "Task", "TaskSet", "exact"]
+__all__ = ["Job", "Platform", "Task", "System", "exact"]

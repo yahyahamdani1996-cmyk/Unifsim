@@ -2,7 +2,7 @@ from fractions import Fraction as F
 
 import pytest
 
-from unifsim.model import Job, Platform, Task, TaskSet
+from unifsim.model import Job, Platform, Task, System
 
 
 def test_task_rejects_float():
@@ -39,7 +39,7 @@ def test_platform_sorted_and_positive():
 
 
 def _ts():
-    return TaskSet((Task(0, 3, 2), Task(1, 2, 3), Task(2, 5, 6)), Platform((2, 1)))
+    return System((Task(0, 3, 2), Task(1, 2, 3), Task(2, 5, 6)), Platform((2, 1)))
 
 
 def test_hyperperiod_and_jobs():
@@ -52,17 +52,17 @@ def test_hyperperiod_and_jobs():
 
 def test_json_roundtrip_and_hash():
     ts = _ts()
-    back = TaskSet.from_json(ts.to_json())
+    back = System.from_json(ts.to_json())
     assert back == ts and back.hash == ts.hash
-    reordered = TaskSet(tuple(reversed(ts.tasks)), ts.platform)
+    reordered = System(tuple(reversed(ts.tasks)), ts.platform)
     assert reordered.hash == ts.hash          # hash independent of task order
-    other = TaskSet((Task(0, 3, 2), Task(1, 2, 3), Task(2, 4, 6)), ts.platform)
+    other = System((Task(0, 3, 2), Task(1, 2, 3), Task(2, 4, 6)), ts.platform)
     assert other.hash != ts.hash
 
 
 def test_duplicate_ids_rejected():
     with pytest.raises(ValueError):
-        TaskSet((Task(0, 1, 2), Task(0, 1, 3)), Platform((1,)))
+        System((Task(0, 1, 2), Task(0, 1, 3)), Platform((1,)))
 
 
 def test_horvath():
@@ -70,8 +70,8 @@ def test_horvath():
     # u = 3/2, 2/3, 5/6 : u_max = 3/2 <= S_1 = 2 and U = 3 = S_2 -> feasible
     assert _ts().horvath_feasible() is True
     # u_max = 5/2 > S_1 = 2 -> infeasible although U = 5/2 + 1/4 <= S_2 = 3
-    assert TaskSet((Task(0, 5, 2), Task(1, 1, 4)), plat).horvath_feasible() is False
+    assert System((Task(0, 5, 2), Task(1, 1, 4)), plat).horvath_feasible() is False
     # U = 3 + 1/4 > S_2 = 3 -> infeasible
-    assert TaskSet((Task(0, 3, 2), Task(1, 7, 4)), plat).horvath_feasible() is False
+    assert System((Task(0, 3, 2), Task(1, 7, 4)), plat).horvath_feasible() is False
     with pytest.raises(NotImplementedError):
-        TaskSet((Task(0, 1, 4, D=3),), plat).horvath_feasible()
+        System((Task(0, 1, 4, D=3),), plat).horvath_feasible()

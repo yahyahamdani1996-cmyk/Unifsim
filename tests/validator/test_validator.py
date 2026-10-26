@@ -6,12 +6,12 @@ from fractions import Fraction as F
 import pytest
 
 from unifsim.engine import simulate
-from unifsim.model import Job, Platform, Task, TaskSet
+from unifsim.model import Job, Platform, Task, System
 from unifsim.schedulers.global_ import GEDF
 from unifsim.trace import Segment, Trace
 from unifsim.validate import ValidationError, validate
 
-TS = TaskSet((Task(0, 2, 4), Task(1, 3, 6)), Platform((2, 1)))
+TS = System((Task(0, 2, 4), Task(1, 3, 6)), Platform((2, 1)))
 J0 = Job.of(TS.task(0), 0)   # [0, 4), C = 2
 J1 = Job.of(TS.task(0), 1)   # [4, 8), C = 2
 K0 = Job.of(TS.task(1), 0)   # [0, 6), C = 3
