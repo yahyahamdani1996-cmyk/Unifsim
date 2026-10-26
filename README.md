@@ -17,4 +17,16 @@ pytest
 
 ## Status
 
-Step 1: model, engine, trace, validator, G-EDF.
+- Step 1: model, engine, trace, validator, G-EDF.
+- Step 2: `DPFair` base class, nominal budget, PCG* (port of the reference
+  implementation by A. Bertout and P. Richard, identical schedules on the
+  oracle tests in `tests/oracle`).
+
+## Oracle tests
+
+`tests/oracle` compares PCG* with the reference implementation. It is skipped
+unless the reference package `pcg` is importable:
+
+```bash
+PYTHONPATH=/path/to/pcg-main/src:/path/to/pcg-main pytest tests/oracle
+```
