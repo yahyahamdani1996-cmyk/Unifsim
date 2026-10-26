@@ -66,3 +66,26 @@ def test_infeasible_budget_refused():
     ts = System((Task(0, 4, 4), Task(1, 4, 4), Task(2, 1, 2)), Platform((1, 1)))
     with pytest.raises(BudgetInfeasible):
         simulate(ts, PCGStar(budget=too_much))
+
+
+@pytest.mark.parametrize("order", ["remaining", "index"])
+@pytest.mark.parametrize("seed", range(100))
+def test_wc_pcg_star_random_feasible(seed, order):
+    from unifsim.schedulers.dp.budgets import greedy_wk
+    ts = _random_feasible(random.Random(seed))
+    tr = simulate(ts, PCGStar(budget=greedy_wk(order)))
+    validate(ts, tr)
+    speeds = ts.platform.speeds
+    for plane in tr.planes:
+        for job, b in plane.budgets:
+            assert b >= 0 and _work_in(tr, job, plane.t0, plane.t1, speeds) == b
+            # lag bound (b >= b_inf): at the end of each plane, every job has done at
+            # least its fluid share u * (t1 - release), the property that keeps optimality
+            done = _work_in(tr, job, job.release, plane.t1, speeds)
+            assert done >= min(job.C, ts.task(job.task_id).u * (plane.t1 - job.release))
+
+
+def test_greedy_wk_bad_order():
+    from unifsim.schedulers.dp.budgets import greedy_wk
+    with pytest.raises(ValueError):
+        greedy_wk("deadline")

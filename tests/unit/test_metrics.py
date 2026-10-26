@@ -74,3 +74,28 @@ def test_running_example_matches_shrimp():
     assert round(float(m.avg_response_time_ratio), 4) == 0.9266
     assert (m.worst_response_time_ratio, m.best_response_time_ratio) == (1, F(25, 32))
     assert all(pre <= 2 * (5 - 1) for _, _, pre in m.per_plane_preemptions)   # Thm. 6
+
+
+def _running_example():
+    return System((Task(1, 33, 8), Task(2, 5, 2), Task(3, 7, 4), Task(4, 9, 8), Task(5, 4, 8), Task(6, 3, 8)),
+                  Platform((6, 3, 2, 2, 1)))
+
+
+def test_running_example_wc_rt_matches_shrimp():
+    s = _running_example()
+    m = compute_metrics(s, simulate(s, make("wc_pcg_star")))
+    assert (m.local_job_preemptions, m.boundary_job_preemptions) == (15, 5)
+    assert (m.local_job_migrations, m.boundary_job_migrations) == (15, 5)
+    assert (m.total_task_migrations, m.total_boundary_task_migrations) == (24, 4)
+    assert round(float(m.avg_response_time_ratio), 4) == 0.7120
+    assert (m.worst_response_time_ratio, m.best_response_time_ratio) == (1, F(35, 192))
+
+
+def test_running_example_wc_idx_matches_shrimp():
+    s = _running_example()
+    m = compute_metrics(s, simulate(s, make("wc_pcg_star_idx")))
+    assert (m.local_job_preemptions, m.boundary_job_preemptions) == (10, 3)
+    assert (m.local_job_migrations, m.boundary_job_migrations) == (10, 3)
+    assert (m.total_task_migrations, m.total_boundary_task_migrations) == (16, 3)
+    assert round(float(m.avg_response_time_ratio), 4) == 0.7734
+    assert (m.worst_response_time_ratio, m.best_response_time_ratio) == (1, F(27, 64))

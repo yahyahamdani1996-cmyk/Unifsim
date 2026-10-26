@@ -25,3 +25,66 @@ def bounds(job, plane, scheduler, view):
     b_inf = max(Fraction(0), rem - u * (job.deadline - t1))
     b_sup = min(rem, scheduler.platform.speeds[0] * (t1 - t0))
     return b_inf, b_sup
+
+
+def greedy_wk(order: str = "remaining", epsilon=Fraction(0)):
+    """Work-conserving allocation (WC-PCG*), port of shrimp greedy_wk / greedy_wk_idx.
+
+    Start from b_inf, then repeatedly give the first job (in `order`) that can
+    still grow the largest increase allowed by the Horvath conditions of the
+    plane, until no job can grow or the global residual R_m <= epsilon * length.
+      order = "remaining": jobs by non-decreasing remaining work (shrimp greedy_wk,
+              the order used in the paper), ties by task id
+      order = "index"    : jobs by task id (shrimp greedy_wk_idx)
+    epsilon = 0 by default (exact arithmetic); shrimp used 1/1250.
+    """
+    if order not in ("remaining", "index"):
+        raise ValueError(f"order must be 'remaining' or 'index', got {order!r}")
+    epsilon = Fraction(epsilon)
+
+    def policy(jobs, plane, scheduler, view):
+        t0, t1 = plane
+        length = t1 - t0
+        speeds = scheduler.platform.speeds
+        m = len(speeds)
+        lo, hi = zip(*(bounds(j, plane, scheduler, view) for j in jobs)) if jobs else ((), ())
+        b = dict(zip(jobs, lo))
+        upper = dict(zip(jobs, hi))
+        Hk = [length * sum(speeds[: k + 1]) for k in range(m - 1)]
+        Hm = length * sum(speeds)
+        if order == "remaining":
+            candidates = sorted(jobs, key=lambda j: (view.remaining(j), j.task_id, j.k))
+        else:
+            candidates = sorted(jobs, key=lambda j: (j.task_id, j.k))
+
+        while True:
+            ranked = sorted(jobs, key=lambda j: b[j], reverse=True)   # stable
+            prefix, R = Fraction(0), []
+            for k in range(m - 1):
+                if k < len(ranked):
+                    prefix += b[ranked[k]]
+                R.append(Hk[k] - prefix)
+            Rm = Hm - sum(b.values())
+            if Rm <= epsilon * length:
+                break
+            grown = False
+            for j in candidates:
+                if b[j] >= upper[j]:
+                    continue
+                p = ranked.index(j)
+                delta = upper[j] - b[j]
+                for k in range(min(p, m - 1)):          # prefixes the job would enter
+                    delta = min(delta, R[k] + b[ranked[k]] - b[j])
+                for k in range(p, m - 1):               # prefixes it already belongs to
+                    delta = min(delta, R[k])
+                delta = min(delta, Rm)
+                if delta > 0:
+                    b[j] += delta
+                    grown = True
+                    break                               # one increase per pass, then re-rank
+            if not grown:
+                break
+        return [b[j] for j in jobs]
+
+    policy.__name__ = f"greedy_wk_{order}"
+    return policy
