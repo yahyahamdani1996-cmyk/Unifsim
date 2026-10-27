@@ -58,9 +58,15 @@ def run(system, algorithm: str, horizon=None) -> dict:
 
 def compare(system, algorithms, path="report.html", horizon=None, title=None) -> Path:
     results = [run(system, a, horizon) for a in algorithms]
+    return write_report(system, results, path, horizon, title)
+
+
+def write_report(system, results, path, horizon=None, title=None) -> Path:
+    """Write the HTML page for results already computed by run() (one or several algorithms)."""
     H = Fraction(system.hyperperiod if horizon is None else horizon)
     page = _page(system, results, H, title or "unifsim comparison")
     p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(page, encoding="utf-8")
     return p
 

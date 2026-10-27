@@ -194,6 +194,28 @@ def system_line(system, name) -> str:
             f"U={system.U} ({float(system.U):.3f}) H={system.hyperperiod}  {feas}")
 
 
+def html_path(a, stem) -> Path:
+    """--out if given (kept), otherwise a temporary file (nothing stored in the project)."""
+    if a.out:
+        return Path(a.out)
+    import tempfile
+    fd, name = tempfile.mkstemp(prefix=f"unifsim_{stem}_", suffix=".html")
+    os.close(fd)
+    return Path(name)
+
+
+def show(path: Path, kept: bool, open_it: bool) -> None:
+    print(f"\n{'report' if kept else 'temporary report'}: {path.resolve()}")
+    if open_it:
+        import webbrowser
+        webbrowser.open(path.resolve().as_uri())
+
+
+def check_tikz(a):
+    if getattr(a, "tikz", None):
+        raise SystemExit("unifsim: --tikz (LaTeX export) is reserved and not implemented yet")
+
+
 def _check_arrivals(a):
     if a.arrivals != "periodic":
         raise SystemExit("unifsim: only --arrivals periodic is implemented")
@@ -205,6 +227,7 @@ def cmd_simulate(a) -> int:
     from .api import run
 
     _check_arrivals(a)
+    check_tikz(a)
     system, name = load_system(a, "simulate")
     print(system_line(system, name))
     try:
@@ -214,6 +237,12 @@ def cmd_simulate(a) -> int:
         if a.json:
             Path(a.json).write_text(json.dumps({"system": name, "hash": system.hash, "scheduler": a.scheduler,
                                                 "status": "failed", "error": str(e)}, indent=2))
+        if a.gantt or a.out:                       # the report shows the failure too
+            from .gui.report import write_report
+            path = write_report(system, [{"name": a.scheduler, "trace": None, "metrics": None,
+                                          "error": f"{type(e).__name__}: {e}"}],
+                                html_path(a, "gantt"), a.horizon, title=name)
+            show(path, bool(a.out), not a.no_open)
         return 1
     print(f"{a.scheduler}  VALID")
     print(r.metrics.report())
@@ -224,13 +253,19 @@ def cmd_simulate(a) -> int:
         Path(a.json).write_text(json.dumps({"system": name, "hash": system.hash, "scheduler": a.scheduler,
                                             "status": "ok", "metrics": r.metrics.as_row()}, indent=2))
         print(f"metrics written to {a.json}")
+    if a.gantt or a.out:
+        from .gui.report import write_report
+        path = write_report(system, [{"name": a.scheduler, "trace": r.trace, "metrics": r.metrics, "error": None}],
+                            html_path(a, "gantt"), a.horizon, title=name)
+        show(path, bool(a.out), not a.no_open)
     return 0
 
 
 def cmd_compare(a) -> int:
-    from .gui.report import ROWS, _fmt, _value, compare
+    from .gui.report import ROWS, _fmt, _value, write_report
 
     _check_arrivals(a)
+    check_tikz(a)
     system, name = load_system(a, "compare")
     print(system_line(system, name))
     algos = [x.strip() for x in a.schedulers.split(",") if x.strip()]
@@ -248,11 +283,8 @@ def cmd_compare(a) -> int:
         if r["error"]:
             print(f"{r['name']}: {r['error']}")
 
-    path = compare(system, algos, a.out, horizon=a.horizon, title=name)
-    print(f"\nreport: {path.resolve()}")
-    if not a.no_open:
-        import webbrowser
-        webbrowser.open(path.resolve().as_uri())
+    path = write_report(system, results, html_path(a, "compare"), a.horizon, title=name)
+    show(path, bool(a.out), not a.no_open)
     return 0
 
 
@@ -294,6 +326,10 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("--index", type=int, default=0, help="with generator options: set number")
         sp.add_argument("--horizon", type=Fraction, default=None, help="simulation length (default: hyperperiod)")
         sp.add_argument("--arrivals", default="periodic", choices=["periodic"], help="arrival model")
+        sp.add_argument("--out", default=None, help="keep the HTML report in this file (default: temporary file)")
+        sp.add_argument("--no-open", action="store_true", help="do not open the report in the browser")
+        sp.add_argument("--tikz", default=None, metavar="FILE.tex",
+                        help="LaTeX/TikZ export of the schedule (reserved, not implemented yet)")
 
     s = sub.add_parser("simulate", help="simulate one system with one scheduler", formatter_class=fmt,
                        description="Simulate, validate and measure one system. Examples:\n"
@@ -303,13 +339,12 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--scheduler", required=True, help="scheduler name (unifsim list)")
     s.add_argument("--schedule", action="store_true", help="also print the schedule")
     s.add_argument("--json", default=None, help="write the metrics to this JSON file")
+    s.add_argument("--gantt", action="store_true", help="open the Gantt chart and metrics in the browser")
     s.set_defaults(func=cmd_simulate)
 
     c = sub.add_parser("compare", help="compare schedulers on one system (HTML report)", formatter_class=fmt)
     one_system(c)
     c.add_argument("--schedulers", required=True, help="comma separated, e.g. pcg_star,wc_pcg_star,g_edf")
-    c.add_argument("--out", default="report.html", help="HTML report")
-    c.add_argument("--no-open", action="store_true", help="do not open the report in the browser")
     c.set_defaults(func=cmd_compare)
 
     li = sub.add_parser("list", help="list the available schedulers")

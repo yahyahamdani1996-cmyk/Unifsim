@@ -117,3 +117,21 @@ def test_list(capsys):
     assert main(["list"]) == 0
     out = capsys.readouterr().out
     assert "pcg_star" in out and "wc_pcg_star" in out and "g_edf" in out
+
+
+def test_simulate_gantt_temporary_and_kept(tmp_path, capsys):
+    f = _gen_file(tmp_path)
+    assert main(["simulate", str(f), "--scheduler", "pcg_star", "--gantt", "--no-open"]) == 0
+    tmp_report = capsys.readouterr().out.strip().splitlines()[-1].split(": ", 1)[1]
+    from pathlib import Path
+    assert Path(tmp_report).exists() and "<svg" in Path(tmp_report).read_text()
+    Path(tmp_report).unlink()
+    kept = tmp_path / "runs" / "pcg.html"
+    assert main(["simulate", str(f), "--scheduler", "pcg_star", "--out", str(kept), "--no-open"]) == 0
+    assert kept.exists()
+
+
+def test_tikz_reserved(tmp_path):
+    f = _gen_file(tmp_path)
+    with pytest.raises(SystemExit):
+        main(["simulate", str(f), "--scheduler", "pcg_star", "--tikz", str(tmp_path / "a.tex")])
