@@ -13,6 +13,7 @@ dependencies = []
 
 [project.optional-dependencies]
 test = ["pytest>=7"]
+gen = ["numpy", "convolutionalfixedsum @ git+https://github.com/dgdguk/convolutionalfixedsum.git@v2.0.1"]
 lp = ["pplpy"]
 
 [tool.setuptools.packages.find]

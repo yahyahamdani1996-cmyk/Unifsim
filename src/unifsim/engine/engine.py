@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from fractions import Fraction
 
+from ..model.arrivals import Periodic
 from ..model.system import System
 from ..schedulers.base import Decision, Scheduler, View
 from ..trace.trace import Trace
@@ -15,9 +16,12 @@ from .errors import DeadlineMiss, InvalidDecision
 
 
 class Engine:
-    def __init__(self, taskset: System, scheduler: Scheduler, horizon=None):
+    def __init__(self, taskset: System, scheduler: Scheduler, horizon=None, arrivals=None):
         self.taskset = taskset
         self.scheduler = scheduler
+        self.arrivals = Periodic() if arrivals is None else arrivals
+        if not isinstance(self.arrivals, Periodic):
+            raise NotImplementedError("v1: periodic arrivals only")
         self.platform = taskset.platform
         self.horizon = Fraction(taskset.hyperperiod if horizon is None else horizon)
         if self.horizon <= 0:
@@ -29,9 +33,10 @@ class Engine:
         trace = Trace(m=m, horizon=H, meta={
             "taskset_hash": ts.hash,
             "scheduler": getattr(sched, "name", type(sched).__name__),
+            "arrivals": self.arrivals.to_dict(),
         })
 
-        pending = ts.jobs(H)          # sorted by release
+        pending = self.arrivals.jobs(ts, H)   # sorted by release
         nxt = 0                       # index of next unreleased job
         active: list = []             # released, not completed
         remaining: dict = {}
@@ -113,5 +118,5 @@ class Engine:
             raise InvalidDecision(f"t={t}: wake_at={d.wake_at} must be > t")
 
 
-def simulate(taskset: System, scheduler: Scheduler, horizon=None) -> Trace:
-    return Engine(taskset, scheduler, horizon).run()
+def simulate(taskset: System, scheduler: Scheduler, horizon=None, arrivals=None) -> Trace:
+    return Engine(taskset, scheduler, horizon, arrivals).run()

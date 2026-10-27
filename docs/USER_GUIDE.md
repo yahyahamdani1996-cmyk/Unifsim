@@ -9,6 +9,7 @@ Contents
 2. [Install](#2-install)
 3. [Quick start](#3-quick-start)
 4. [Describing a system](#4-describing-a-system)
+   - [Generating task sets](#4b-generating-task-sets)
 5. [Available algorithms](#5-available-algorithms)
 6. [Reading the result: the trace](#6-reading-the-result-the-trace)
 7. [Validation](#7-validation)
@@ -154,6 +155,72 @@ Task(0, F(7, 2), 4)    # ok
 Task(0, "7/2", 4)      # ok
 Task(0, 3.5, 4)        # TypeError: float rejected
 ```
+
+## 4b. Generating task sets
+
+Requires `pip install -e ".[gen]"` (numpy and ConvolutionalFixedSum, pinned version).
+
+### One set
+
+```python
+from unifsim.gen import cfs_uniform
+from unifsim import Platform
+
+system = cfs_uniform(n=20, U=18, platform=Platform((8, 6, 5, 4, 3, 2, 1, 1)),
+                     periods=(2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60),
+                     u_min="1/100", u_max=8, quantum="1/10000", seed=42)
+system.save("examples/dev_n20_U18_s42.json")      # keep it for development
+```
+
+Method (`cfs_uniform@1`, from shrimp `generate_task.py`): utilizations drawn
+uniformly in `[u_min, u_max]^n` summing to U (cfsa), quantized to multiples of
+`quantum`, rejected unless the Horváth conditions hold, periods drawn from
+`periods`, `C = u·T`.
+
+| Option | Default | shrimp behaviour |
+|---|---|---|
+| `seed` | required for reproducibility | unseeded |
+| `rounding` | `"exact_sum"`: the quantized utilizations sum to U exactly | `"independent"`: each u rounded alone, the sum may differ from U |
+| `order` | `"random"`: task ids in the order drawn | `"sorted"`: task 0 = largest utilization |
+
+Same arguments and seed → same set, on any machine. `system.meta` records the
+generator and its version, the parameters, the seed, the number of attempts, the
+utilization reached and `max_task_share` (largest u / U, to track skewed sets).
+
+### Campaign points
+
+```python
+from unifsim.gen import point, regenerate
+
+for s in point(n=20, U=18, count=1000, master_seed=2027, platform=..., periods=..., u_max=8):
+    ...                                           # generated in memory, no file
+s = regenerate(n=20, U=18, index=417, master_seed=2027, platform=..., periods=..., u_max=8)
+```
+
+Set `i` of a point is generated from `derive_seed(master_seed, n, U, i)` (SHA-256),
+so it does not depend on the order of generation or on the number of workers,
+and any line of a result file can be regenerated alone.
+
+Generation is dominated by cfsa (about 0.27 s per set at n = 40): a campaign
+should generate each set once and run all the algorithms on it.
+
+### Banks
+
+```python
+from unifsim.gen import write_bank, read_bank
+write_bank("bank/n20_U18.jsonl.gz", point(...))   # freeze a point (one set per line, gzip)
+for s in read_bank("bank/n20_U18.jsonl.gz"): ...  # checks every stored hash
+```
+
+Rule: seeds to work, a frozen bank for anything published or shared. A seed only
+regenerates the same set as long as the code and its dependencies do not change;
+the hash stored with each set detects any difference.
+
+### Arrivals
+
+`simulate(..., arrivals=Periodic())` is the default (synchronous periodic). The
+arrival model is separate from the System so the same System can later be run
+with sporadic arrivals; only `Periodic` exists in v1.
 
 ## 5. Available algorithms
 
@@ -441,4 +508,4 @@ PYTHONPATH=/path/to/pcg-main/src:/path/to/pcg-main pytest tests/oracle
 - Uniform platforms only (one speed per processor).
 - No preemption or migration overheads.
 - The report is a static page: the system and the algorithms are chosen in the script.
-- Not yet: task-set generator, campaigns, sporadic tasks.
+- Not yet: campaigns, sporadic arrivals (the arrival model is in place, only `Periodic` exists).

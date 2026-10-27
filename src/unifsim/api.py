@@ -26,11 +26,11 @@ class Result:
         print(self.metrics.report())
 
 
-def run(system, algorithm, horizon=None) -> Result:
+def run(system, algorithm, horizon=None, arrivals=None) -> Result:
     """algorithm: a registry name ("pcg_star", "wc_pcg_star", "g_edf", ...) or a Scheduler object.
     Raises on a deadline miss, an invalid decision or an invalid schedule."""
     scheduler = make(algorithm) if isinstance(algorithm, str) else algorithm
-    trace = simulate(system, scheduler, horizon)
+    trace = simulate(system, scheduler, horizon, arrivals)
     validate(system, trace)
     name = algorithm if isinstance(algorithm, str) else getattr(scheduler, "name", type(scheduler).__name__)
     return Result(system, name, trace, compute_metrics(system, trace))
