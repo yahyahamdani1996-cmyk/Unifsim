@@ -305,7 +305,13 @@ report and, later, in campaigns.
 | `pcg_star` | PCG\* with the DP-fair allocation (b = u·Δ) | deadline-partitioned (DP) |
 | `wc_pcg_star` | WC-PCG\*: PCG\* with the work-conserving (WK) allocation, jobs taken by non-decreasing remaining work (the order of the paper) | DP |
 | `wc_pcg_star_idx` | WC-PCG\* with jobs taken by task index | DP |
+| `pcg_star_online` | PCG\* decided online at every scheduling point (port of shrimp `pcg_etoile_tl`), DP-fair allocation | DP (`DPOnline`) |
+| `wc_pcg_star_online` | same, WK allocation | DP (`DPOnline`) |
 | `g_edf` | Global EDF: earliest deadline on the fastest processor | global, not optimal for m > 1 |
+
+`pcg_star` computes each TL-plane at its start (reference implementation);
+`pcg_star_online` decides at every scheduling point (shrimp). They differ through
+three handling rules: see [PCG_ONLINE_VS_REFERENCE.md](PCG_ONLINE_VS_REFERENCE.md).
 
 ### Terminology
 

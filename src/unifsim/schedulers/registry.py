@@ -2,6 +2,7 @@
 
 from .dp.budgets import dp_fair, greedy_wk
 from .dp.pcg_star import PCGStar
+from .dp.pcg_star_online import PCGStarOnline
 from .global_.g_edf import GEDF
 
 def _named(scheduler, name):
@@ -14,6 +15,8 @@ REGISTRY = {
     "pcg_star": lambda: PCGStar(budget=dp_fair),
     "wc_pcg_star": lambda: _named(PCGStar(budget=greedy_wk("remaining")), "wc_pcg_star"),
     "wc_pcg_star_idx": lambda: _named(PCGStar(budget=greedy_wk("index")), "wc_pcg_star_idx"),
+    "pcg_star_online": lambda: PCGStarOnline(budget=dp_fair),
+    "wc_pcg_star_online": lambda: _named(PCGStarOnline(budget=greedy_wk("remaining")), "wc_pcg_star_online"),
 }
 
 

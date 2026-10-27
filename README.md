@@ -34,7 +34,8 @@ compare(system, ["pcg_star", "wc_pcg_star", "g_edf"], "report.html")
 ## Algorithms
 
 `pcg_star` (DP-fair allocation), `wc_pcg_star` (WK allocation, remaining-time
-order), `wc_pcg_star_idx` (WK allocation, index order), `g_edf`.
+order), `wc_pcg_star_idx` (WK allocation, index order), `pcg_star_online` /
+`wc_pcg_star_online` (decided online, shrimp port), `g_edf`.
 
 ## Credits
 

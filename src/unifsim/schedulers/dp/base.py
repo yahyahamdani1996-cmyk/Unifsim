@@ -69,6 +69,21 @@ class DP(Scheduler):
 
     # -------------------------------------------------------------- internals
     def _new_plane(self, t, view):
+        t0, t1, local = self._plane_budgets(t, view)
+        length, speeds = t1 - t0, self.platform.speeds
+        self._plan = []
+        if not local:
+            return
+        plan = self.schedule_plane([b for _, b in local], speeds, length)
+        for p, proc_sched in enumerate(plan):
+            for i, (s, e) in proc_sched:
+                if s < e:
+                    self._plan.append((p, local[i][0], t0 + s, t0 + e))
+
+    def _plane_budgets(self, t, view):
+        """Start of the plane at t: boundaries, budgets, checks, PlaneRecord.
+        Returns (t0, t1, [(job, budget > 0)]), jobs in (task id, k) order.
+        Shared by DP (whole plane computed here) and DPOnline (decided online)."""
         self._plane_idx = self.boundaries.index(t)   # t is always a boundary here
         t0, t1 = t, self.boundaries[self._plane_idx + 1]
         self._t1 = t1
@@ -88,15 +103,7 @@ class DP(Scheduler):
         self._planes.append(PlaneRecord(t0, t1, tuple(zip(jobs, budgets))))
 
         # jobs with a zero budget do not take part in the plane
-        local = [(j, b) for j, b in zip(jobs, budgets) if b > 0]
-        self._plan = []
-        if not local:
-            return
-        plan = self.schedule_plane([b for _, b in local], speeds, length)
-        for p, proc_sched in enumerate(plan):
-            for i, (s, e) in proc_sched:
-                if s < e:
-                    self._plan.append((p, local[i][0], t0 + s, t0 + e))
+        return t0, t1, [(j, b) for j, b in zip(jobs, budgets) if b > 0]
 
     @staticmethod
     def _check_horvath(budgets, speeds, length, t0):
