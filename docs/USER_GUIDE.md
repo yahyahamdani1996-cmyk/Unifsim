@@ -113,6 +113,8 @@ unifsim compare Tasksets/m8_n20_U18/ts_0000.json --schedulers pcg_star,wc_pcg_st
 unifsim compare --platform 6,3,2,2,1 --n 6 --U 10 --schedulers pcg_star,wc_pcg_star --out r.html --no-open
 ```
 
+- Charts: mouse wheel to zoom, drag to move, double-click to reset, or type a
+  from / to time window; the window is shared by all charts of a report.
 - HTML reports go to `unifsim_reports/` in the current folder by default (ignored
   by git, only the 20 most recent kept; `UNIFSIM_REPORTS=dir` to change it). Not
   `/tmp`: Firefox installed as a snap cannot read it. `--out FILE.html` keeps a

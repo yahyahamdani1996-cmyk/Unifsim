@@ -12,6 +12,7 @@ no dependency, opens in any browser.
 from __future__ import annotations
 
 import html
+import json
 from datetime import datetime
 from fractions import Fraction
 from pathlib import Path
@@ -96,12 +97,23 @@ def _ticks(H):
     return out
 
 
-def _gantt(system, trace, H):
+def _chart_data(system, trace):
+    """Segments and TL-plane boundaries for the zoomable chart (floats to draw, exact strings to show)."""
+    ids = sorted(t.id for t in system.tasks)
+    sp = system.platform.speeds
+    segs = [[s.proc, PALETTE[ids.index(s.job.task_id) % len(PALETTE)], s.job.name,
+             float(s.start), float(s.end), str(s.start), str(s.end), str((s.end - s.start) * sp[s.proc])]
+            for s in trace.segments]
+    bounds = sorted({p.t0 for p in trace.planes} | {p.t1 for p in trace.planes})
+    return {"segs": segs, "planes": [float(b) for b in bounds[1:-1]]}
+
+
+def _gantt(system, trace, H, idx=0):
     m = system.platform.m
     left, width, row, top = 92, 860, 34, 26
     height = top + m * row + 30
     X = lambda t: left + float(t) / float(H) * width
-    parts = [f'<svg viewBox="0 0 {left + width + 20} {height}" class="gantt" role="img">']
+    parts = [f'<svg viewBox="0 0 {left + width + 20} {height}" class="gantt" role="img" data-chart="{idx}">']
     for t in _ticks(H):
         x = X(t)
         parts.append(f'<line x1="{x:.2f}" x2="{x:.2f}" y1="{top - 6}" y2="{top + m * row}" class="grid"/>'
@@ -158,15 +170,26 @@ def _page(system, results, H, title):
         f'<tr><td><span class="dot" style="background:{PALETTE[i % len(PALETTE)]}"></span>τ{t.id}</td>'
         f"<td>{t.C}</td><td>{t.T}</td><td>{t.D}</td><td>{float(t.u):.3f}</td></tr>"
         for i, t in enumerate(sorted(system.tasks, key=lambda t: t.id)))
-    sections = []
+    sections, charts = [], {}
     for r in results:
         if r["error"]:
             body = f'<p class="error">{html.escape(r["error"])}</p>'
             status = '<span class="badge bad">failed</span>'
         else:
-            body = _gantt(system, r["trace"], H)
+            idx = len(charts)
+            charts[idx] = _chart_data(system, r["trace"])
+            body = _gantt(system, r["trace"], H, idx)
             status = '<span class="badge good">valid</span>'
         sections.append(f'<section class="card"><h2>{html.escape(r["name"])} {status}</h2>{body}</section>')
+    data = json.dumps({"H": float(H), "procs": [f"P{p + 1}" for p in range(system.platform.m)],
+                       "speeds": [str(x) for x in system.platform.speeds], "charts": charts})
+    toolbar = ('<div class="toolbar card"><b>Time window</b>'
+               '<button id="zin" title="zoom in">+</button><button id="zout" title="zoom out">&minus;</button>'
+               '<button id="zreset" title="whole horizon">&#10226;</button>'
+               '<label>from <input id="vfrom" size="9"></label><label>to <input id="vto" size="9"></label>'
+               '<button id="vapply">apply</button>'
+               '<span class="hint">wheel: zoom &middot; drag: move &middot; double-click: reset</span></div>'
+               if charts else "")
     speeds = ", ".join(str(s) for s in system.platform.speeds)
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -208,6 +231,15 @@ td.fail {{ color:var(--bad); }}
 .gantt .label {{ fill:#fff; font-size:10.5px; font-weight:600; text-anchor:middle; pointer-events:none; }}
 .gantt g:hover rect {{ opacity:.8; }}
 .note {{ color:var(--muted); font-size:12px; margin-top:8px; }}
+.toolbar {{ position:sticky; top:8px; z-index:5; display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:10px 14px; }}
+.toolbar button {{ font:inherit; min-width:30px; padding:3px 10px; border:1px solid var(--line); border-radius:8px;
+                  background:var(--bg); color:var(--ink); cursor:pointer; }}
+.toolbar button:hover {{ border-color:var(--accent); }}
+.toolbar input {{ font:inherit; padding:3px 6px; border:1px solid var(--line); border-radius:6px;
+                 background:var(--bg); color:var(--ink); font-variant-numeric:tabular-nums; }}
+.toolbar .hint {{ color:var(--muted); font-size:12px; margin-left:auto; }}
+.gantt[data-chart] {{ cursor:grab; user-select:none; touch-action:none; }}
+.gantt.dragging {{ cursor:grabbing; }}
 </style></head><body><main>
 <h1>{html.escape(title)}</h1>
 <p class="sub-title">n = {system.n} tasks · m = {system.platform.m} processors (speeds {speeds}) ·
@@ -218,6 +250,78 @@ U = {system.U} ({float(system.U):.3f}) · horizon {H} · generated {datetime.now
 <section class="card"><h2>Metrics</h2>{_table(results)}
 <p class="note">Bold: best value of the row (lower is better). Local / boundary only for TL-plane algorithms.</p></section>
 </div>
+{toolbar}
 {''.join(sections)}
-<p class="note">Same time scale for every chart. Dashed lines: TL-plane boundaries. Hover a block for its details.</p>
-</main></body></html>"""
+<p class="note">Same time window for every chart. Dashed lines: TL-plane boundaries. Hover a block for its details.</p>
+</main>
+<script>
+const D = {data};
+(() => {{
+  const L = 92, W = 860, ROW = 34, TOP = 26, m = D.procs.length, HEIGHT = TOP + m * ROW + 30, VBW = L + W + 20;
+  let v0 = 0, v1 = D.H;
+  const svgs = [...document.querySelectorAll("svg.gantt[data-chart]")];
+  if (!svgs.length) return;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({{"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}})[c]);
+  const X = t => L + (t - v0) / (v1 - v0) * W;
+  const step = span => {{ const raw = span / 12, p = Math.pow(10, Math.floor(Math.log10(raw)));
+    for (const f of [1, 2, 5, 10]) if (f * p >= raw) return f * p; return 10 * p; }};
+  const fmt = (t, st) => {{ const d = Math.max(0, -Math.floor(Math.log10(st))); return t.toFixed(Math.min(d, 6)); }};
+  function draw(svg) {{
+    const c = D.charts[svg.dataset.chart], id = "clip" + svg.dataset.chart, st = step(v1 - v0);
+    let h = `<defs><clipPath id="${{id}}"><rect x="${{L}}" y="0" width="${{W}}" height="${{HEIGHT}}"/></clipPath></defs>`;
+    for (let t = Math.ceil(v0 / st) * st; t <= v1 + st * 1e-9; t += st) {{
+      const x = X(t);
+      h += `<line x1="${{x}}" x2="${{x}}" y1="${{TOP - 6}}" y2="${{TOP + m * ROW}}" class="grid"/>` +
+           `<text x="${{x}}" y="${{TOP - 10}}" class="tick">${{fmt(t, st)}}</text>`;
+    }}
+    for (let p = 0; p < m; p++) {{
+      const y = TOP + p * ROW;
+      h += `<rect x="${{L}}" y="${{y + 3}}" width="${{W}}" height="${{ROW - 6}}" class="lane"/>` +
+           `<text x="${{L - 10}}" y="${{y + ROW / 2 + 4}}" class="proc">${{D.procs[p]}}<tspan class="speed"> s=${{D.speeds[p]}}</tspan></text>`;
+    }}
+    h += `<g clip-path="url(#${{id}})">`;
+    for (const b of c.planes) if (b > v0 && b < v1) {{ const x = X(b);
+      h += `<line x1="${{x}}" x2="${{x}}" y1="${{TOP}}" y2="${{TOP + m * ROW}}" class="plane"/>`; }}
+    for (const [p, col, name, s, e, se, ee, w] of c.segs) {{
+      if (e <= v0 || s >= v1) continue;
+      const x0 = X(Math.max(s, v0)), x1 = X(Math.min(e, v1)), y = TOP + p * ROW;
+      h += `<g><title>${{esc(name)}} on P${{p + 1}}  [${{se}}, ${{ee}})  work ${{w}}</title>` +
+           `<rect x="${{x0}}" y="${{y + 5}}" width="${{Math.max(x1 - x0, 0.6)}}" height="${{ROW - 10}}" rx="3" fill="${{col}}"/>`;
+      if (x1 - x0 > 7.5 * name.length + 6) h += `<text x="${{(x0 + x1) / 2}}" y="${{y + ROW / 2 + 4}}" class="label">${{esc(name)}}</text>`;
+      h += "</g>";
+    }}
+    svg.innerHTML = h + "</g>";
+  }}
+  const vf = document.getElementById("vfrom"), vt = document.getElementById("vto");
+  function render() {{ svgs.forEach(draw); const st = step(v1 - v0) / 10; vf.value = fmt(v0, st); vt.value = fmt(v1, st); }}
+  function setView(a, b) {{
+    let span = Math.min(Math.max(b - a, D.H / 1e6), D.H);
+    a = Math.min(Math.max(a, 0), D.H - span); v0 = a; v1 = a + span; render();
+  }}
+  const timeAt = (svg, clientX) => {{ const r = svg.getBoundingClientRect();
+    return v0 + (((clientX - r.left) / r.width * VBW) - L) / W * (v1 - v0); }};
+  const zoom = (f, c) => setView(c - (c - v0) * f, c - (c - v0) * f + (v1 - v0) * f);
+  for (const svg of svgs) {{
+    svg.addEventListener("wheel", e => {{ e.preventDefault();
+      zoom(e.deltaY < 0 ? 1 / 1.25 : 1.25, Math.min(Math.max(timeAt(svg, e.clientX), v0), v1)); }}, {{passive: false}});
+    svg.addEventListener("dblclick", () => setView(0, D.H));
+    svg.addEventListener("pointerdown", e => {{
+      const r = svg.getBoundingClientRect(), x0 = e.clientX, a = v0, b = v1;
+      svg.setPointerCapture(e.pointerId); svg.classList.add("dragging");
+      const move = ev => {{ const dt = (ev.clientX - x0) / r.width * VBW / W * (b - a); setView(a - dt, b - dt); }};
+      const up = () => {{ svg.classList.remove("dragging"); svg.removeEventListener("pointermove", move);
+        svg.removeEventListener("pointerup", up); }};
+      svg.addEventListener("pointermove", move); svg.addEventListener("pointerup", up);
+    }});
+  }}
+  const num = s => {{ s = s.trim(); if (s.includes("/")) {{ const [a, b] = s.split("/"); return +a / +b; }} return +s; }};
+  document.getElementById("zin").onclick = () => zoom(1 / 1.5, (v0 + v1) / 2);
+  document.getElementById("zout").onclick = () => zoom(1.5, (v0 + v1) / 2);
+  document.getElementById("zreset").onclick = () => setView(0, D.H);
+  document.getElementById("vapply").onclick = () => {{ const a = num(vf.value), b = num(vt.value);
+    if (isFinite(a) && isFinite(b) && b > a) setView(a, b); }};
+  for (const inp of [vf, vt]) inp.addEventListener("keydown", e => {{ if (e.key === "Enter") document.getElementById("vapply").click(); }});
+  render();
+}})();
+</script>
+</body></html>"""
