@@ -1,13 +1,6 @@
-"""Running example of the paper (Tables 2 and 3), scheduled by PCG*.
+"""Running example of the paper (Tables 2 and 3).  Run:  python examples/running_example.py"""
 
-Run from the repository root:  python examples/running_example.py
-"""
-
-from unifsim.engine import simulate
-from unifsim.metrics import compute_metrics
-from unifsim.model import Platform, System, Task
-from unifsim.schedulers.registry import make
-from unifsim.validate import validate
+from unifsim import Platform, System, Task, compare, run
 
 system = System(
     tasks=(Task(1, 33, 8), Task(2, 5, 2), Task(3, 7, 4),     # Task(id, C, T)
@@ -15,9 +8,8 @@ system = System(
     platform=Platform((6, 3, 2, 2, 1)),                      # speeds, fastest first
 )
 
-trace = simulate(system, make("pcg_star"))   # 1. run
-validate(system, trace)                       # 2. check
-for s in trace.segments:                      # 3. read the schedule
-    print(s.proc, s.job.name, s.start, s.end)
+r = run(system, "pcg_star")      # simulate + validate + metrics
+r.schedule()                     # the schedule
+r.report()                       # the metrics
 
-print(compute_metrics(system, trace).report())   # 4. metrics
+compare(system, ["pcg_star", "wc_pcg_star", "g_edf"], "report.html")   # HTML report

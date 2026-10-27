@@ -63,14 +63,8 @@ Each new session: `cd Unifsim && source venv/bin/activate && git pull`.
 
 ## 3. Quick start
 
-Always the same four lines, whatever the system or the algorithm:
-
 ```python
-from unifsim.model import Task, Platform, System
-from unifsim.engine import simulate
-from unifsim.schedulers.registry import make
-from unifsim.validate import validate
-from unifsim.metrics import compute_metrics
+from unifsim import Task, Platform, System, run, compare
 
 system = System(
     tasks=(Task(1, 33, 8), Task(2, 5, 2), Task(3, 7, 4),     # Task(id, C, T)
@@ -78,12 +72,16 @@ system = System(
     platform=Platform((6, 3, 2, 2, 1)),                      # speeds, fastest first
 )
 
-trace = simulate(system, make("pcg_star"))        # 1. run
-validate(system, trace)                            # 2. check
-for s in trace.segments:                           # 3. read the schedule
-    print(s.proc, s.job.name, s.start, s.end)
-print(compute_metrics(system, trace).report())     # 4. metrics
+r = run(system, "pcg_star")     # simulate + validate + metrics (raises if anything is wrong)
+r.schedule()                    # print the schedule
+r.report()                      # print the metrics
+r.trace, r.metrics              # the objects, for your own code
+
+compare(system, ["pcg_star", "wc_pcg_star", "g_edf"], "report.html")   # HTML report
 ```
+
+`run` also accepts a scheduler object: `run(system, MyPCGStar())`. The lower-level
+functions (`simulate`, `validate`, `compute_metrics`) are described below.
 
 Ready-made scripts, run from the repository root:
 

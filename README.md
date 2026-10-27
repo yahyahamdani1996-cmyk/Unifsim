@@ -20,25 +20,15 @@ pytest -q
 ## Quick start
 
 ```python
-from unifsim.model import Task, Platform, System
-from unifsim.engine import simulate
-from unifsim.schedulers.registry import make
-from unifsim.validate import validate
-from unifsim.metrics import compute_metrics
+from unifsim import Task, Platform, System, run, compare
 
 system = System(tasks=(Task(1, 33, 8), Task(2, 5, 2), Task(3, 7, 4),
                        Task(4, 9, 8), Task(5, 4, 8), Task(6, 3, 8)),
                 platform=Platform((6, 3, 2, 2, 1)))
 
-trace = simulate(system, make("pcg_star"))
-validate(system, trace)
-print(compute_metrics(system, trace).report())
-```
-
-Compare algorithms in an HTML report:
-
-```bash
-python examples/compare_example.py      # PCG* vs WC-PCG* vs G-EDF
+r = run(system, "pcg_star")      # simulate + validate + metrics
+r.report()
+compare(system, ["pcg_star", "wc_pcg_star", "g_edf"], "report.html")
 ```
 
 ## Algorithms
