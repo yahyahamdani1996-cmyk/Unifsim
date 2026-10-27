@@ -162,24 +162,35 @@ Requires `pip install -e ".[gen]"` (numpy and ConvolutionalFixedSum, pinned vers
 
 ### From the command line
 
+Two platform modes; give one of `--platform` / `--m`, and one of `--U` / `--load`.
+
 ```bash
-unifsim gen --n 20 --U 18 --count 1000                 # Tasksets/n20_U18/ts_0000.json ... ts_0999.json
-unifsim gen --n 8-40/4 --U 6-30 --count 1000           # every (n, U) pair, one folder each
-unifsim gen --n 20 --U 18 --index 417                  # only set 417 of that point
-unifsim gen --n 20 --U 18 --count 1000 --bank          # one file Tasksets/n20_U18.jsonl.gz
-unifsim gen --help                                     # all options and their defaults
+# fixed platform (same speeds for every set), absolute utilization
+unifsim gen --platform 8,6,5,4,3,2,1,1 --n 20 --U 18 --count 1000
+#   -> Tasksets/m8_n20_U18/ts_0000.json ... ts_0999.json
+
+# random platform: m and n fixed, for EACH set the speeds and the tasks are drawn
+unifsim gen --m 8 --n 20 --load 0.67 --count 1000
+#   -> Tasksets/m8_n20_load0.67/ts_0000.json ...      U = 0.67 x S_m of each platform
+
+unifsim gen --platform 8,6,5,4,3,2,1,1 --n 8-40/4 --U 6-30 --count 1000   # every (n, U) pair
+unifsim gen --platform 8,6,5,4,3,2,1,1 --n 20 --U 18 --index 417          # only set 417
+unifsim gen --m 8 --n 20 --load 0.67 --count 1000 --bank                   # one .jsonl.gz per point
+unifsim gen --help                                                          # all options
 ```
 
+- Random platform: integer speeds drawn uniformly in `--speeds 1-10` (default), the
+  slowest forced to 1, sorted fastest first. Each file holds its own platform.
+- With a fixed platform, `--load` also works (U = load × S_m).
 - Tasks are sorted by non-increasing utilization (task 0 = largest), as in the paper.
-- Defaults = the WC-PCG\* campaign: platform `8,6,5,4,3,2,1,1`, periods
-  `2,3,4,5,6,10,12,15,20,30,60`, `u_min 1/100`, `u_max 8`, quantum `1/10000`.
-  Change any with `--platform`, `--periods`, `--u-min`, `--u-max`, `--quantum`.
-- Ranges: `20`, `8,12,20`, `6-30` (step 1), `8-40/4` (step 4); fractions allowed (`37/2`).
+- Defaults: periods `2,3,4,5,6,10,12,15,20,30,60`, `u_min 1/100`, `u_max` = fastest
+  speed of the platform, quantum `1/10000`.
+- Ranges: `20`, `8,12,20`, `6-30` (step 1), `8-40/4` (step 4), `0.1-1/0.1`; fractions allowed.
 - The same command always produces the same sets; `--seed` only draws another family.
-- Existing files are kept: rerun the same command to resume an interrupted generation.
-- Generation runs in parallel (`--jobs`, default: all cores).
+- Existing files are kept: rerun the same command to resume.
+- Parallel (`--jobs`, default: all cores).
 
-Use a generated set like any other: `run(System.load("Tasksets/n20_U18/ts_0417.json"), "pcg_star")`.
+Use a generated set like any other: `run(System.load("Tasksets/m8_n20_U18/ts_0417.json"), "pcg_star")`.
 
 ### One set from Python
 
@@ -187,7 +198,7 @@ Use a generated set like any other: `run(System.load("Tasksets/n20_U18/ts_0417.j
 from unifsim.gen import cfs_uniform
 from unifsim import Platform
 
-system = cfs_uniform(n=20, U=18, platform=Platform((8, 6, 5, 4, 3, 2, 1, 1)),
+system = cfs_uniform(n=20, U=18, platform=Platform((8, 6, 5, 4, 3, 2, 1, 1)),   # fixed platform
                      periods=(2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60),
                      u_min="1/100", u_max=8, quantum="1/10000", seed=42)
 system.save("examples/dev_n20_U18_s42.json")      # keep it for development
@@ -213,9 +224,11 @@ utilization reached and `max_task_share` (largest u / U, to track skewed sets).
 ```python
 from unifsim.gen import point, regenerate
 
-for s in point(n=20, U=18, count=1000, master_seed=2027, platform=..., periods=..., u_max=8):
-    ...                                           # generated in memory, no file
-s = regenerate(n=20, U=18, index=417, master_seed=2027, platform=..., periods=..., u_max=8)
+for s in point(n=20, U=18, count=1000, master_seed=2027, platform=..., periods=...):
+    ...                                           # fixed platform, generated in memory
+for s in point(n=20, load="0.67", count=1000, master_seed=2027, m=8, speed_range=(1, 10), periods=...):
+    ...                                           # random platform per set
+s = regenerate(n=20, U=18, index=417, master_seed=2027, platform=..., periods=...)
 ```
 
 Set `i` of a point is generated from `derive_seed(master_seed, n, U, i)` (SHA-256),

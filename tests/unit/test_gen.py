@@ -5,7 +5,7 @@ import pytest
 pytest.importorskip("convolutionalfixedsum")
 
 from unifsim.gen import (GenerationError, cfs_uniform, derive_seed, point,  # noqa: E402
-                         read_bank, regenerate, write_bank)
+                         random_platform, read_bank, regenerate, write_bank)
 from unifsim.model import Platform  # noqa: E402
 
 P = Platform((8, 6, 5, 4, 3, 2, 1, 1))
@@ -80,3 +80,18 @@ def test_bank_detects_modification(tmp_path):
 def test_impossible_target():
     with pytest.raises(GenerationError):
         cfs_uniform(4, 40, seed=1, **KW)                     # 4 tasks cannot reach U = 40 with u <= 8
+
+
+def test_random_platform():
+    for k in range(1, 50):
+        sp = random_platform(6, 1, 10, seed=k).speeds
+        assert len(sp) == 6 and sp[-1] == 1 and list(sp) == sorted(sp, reverse=True)
+        assert all(1 <= x <= 10 for x in sp)
+    assert random_platform(6, seed=3) == random_platform(6, seed=3)
+
+
+def test_regenerate_random_platform_deterministic():
+    kw = dict(periods=PER, m=4, load="1/2")
+    a = regenerate(10, index=2, master_seed=5, **kw)
+    assert a.hash == regenerate(10, index=2, master_seed=5, **kw).hash
+    assert a.U == sum(a.platform.speeds) / 2 and a.platform.speeds[-1] == 1
