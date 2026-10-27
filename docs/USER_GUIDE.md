@@ -160,7 +160,28 @@ Task(0, 3.5, 4)        # TypeError: float rejected
 
 Requires `pip install -e ".[gen]"` (numpy and ConvolutionalFixedSum, pinned version).
 
-### One set
+### From the command line
+
+```bash
+unifsim gen --n 20 --U 18 --count 1000                 # Tasksets/n20_U18/ts_0000.json ... ts_0999.json
+unifsim gen --n 8-40/4 --U 6-30 --count 1000           # every (n, U) pair, one folder each
+unifsim gen --n 20 --U 18 --index 417                  # only set 417 of that point
+unifsim gen --n 20 --U 18 --count 1000 --bank          # one file Tasksets/n20_U18.jsonl.gz
+unifsim gen --help                                     # all options and their defaults
+```
+
+- Tasks are sorted by non-increasing utilization (task 0 = largest), as in the paper.
+- Defaults = the WC-PCG\* campaign: platform `8,6,5,4,3,2,1,1`, periods
+  `2,3,4,5,6,10,12,15,20,30,60`, `u_min 1/100`, `u_max 8`, quantum `1/10000`.
+  Change any with `--platform`, `--periods`, `--u-min`, `--u-max`, `--quantum`.
+- Ranges: `20`, `8,12,20`, `6-30` (step 1), `8-40/4` (step 4); fractions allowed (`37/2`).
+- The same command always produces the same sets; `--seed` only draws another family.
+- Existing files are kept: rerun the same command to resume an interrupted generation.
+- Generation runs in parallel (`--jobs`, default: all cores).
+
+Use a generated set like any other: `run(System.load("Tasksets/n20_U18/ts_0417.json"), "pcg_star")`.
+
+### One set from Python
 
 ```python
 from unifsim.gen import cfs_uniform
@@ -181,7 +202,7 @@ uniformly in `[u_min, u_max]^n` summing to U (cfsa), quantized to multiples of
 |---|---|---|
 | `seed` | required for reproducibility | unseeded |
 | `rounding` | `"exact_sum"`: the quantized utilizations sum to U exactly | `"independent"`: each u rounded alone, the sum may differ from U |
-| `order` | `"random"`: task ids in the order drawn | `"sorted"`: task 0 = largest utilization |
+| `order` | `"sorted"`: task 0 = largest utilization (as shrimp and the paper) | same |
 
 Same arguments and seed → same set, on any machine. `system.meta` records the
 generator and its version, the parameters, the seed, the number of attempts, the

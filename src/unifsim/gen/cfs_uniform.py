@@ -12,8 +12,8 @@ Differences with the shrimp script, each one switchable to the old behaviour:
   - rounding="exact_sum" (default): the quantized utilizations sum to U exactly
     (largest remainder). rounding="independent" rounds each u_i alone, as in
     shrimp: the sum then differs from U by up to n * quantum / 2;
-  - order="random" (default): task ids in the order drawn by cfsa (exchangeable).
-    order="sorted": task 0 = largest utilization, as in shrimp.
+  - order="sorted" (default, as in shrimp and in the paper): task 0 = largest
+    utilization. order="random": task ids in the order drawn by cfsa.
 """
 
 from __future__ import annotations
@@ -60,7 +60,7 @@ def _quantize_independent(raw, q):
 
 
 def cfs_uniform(n, U, platform, periods, u_min="1/100", u_max=None, quantum="1/10000",
-                seed=1, rounding="exact_sum", order="random", max_attempts=1000) -> System:
+                seed=1, rounding="exact_sum", order="sorted", max_attempts=1000) -> System:
     """One feasible task set. Deterministic in all its arguments.
 
     n, U        : number of tasks, total utilization (exact, multiple of quantum)

@@ -11,6 +11,9 @@ requires-python = ">=3.10"
 authors = [{ name = "Yahya Hamdani" }]
 dependencies = []
 
+[project.scripts]
+unifsim = "unifsim.cli:main"
+
 [project.optional-dependencies]
 test = ["pytest>=7"]
 gen = ["numpy", "convolutionalfixedsum @ git+https://github.com/dgdguk/convolutionalfixedsum.git@v2.0.1"]

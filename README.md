@@ -13,7 +13,7 @@ multiprocessor platforms (deadline-partitioned and global algorithms).
 
 ```bash
 python -m venv venv && source venv/bin/activate
-pip install -e ".[test]"
+pip install -e ".[test,gen]"
 pytest -q
 ```
 

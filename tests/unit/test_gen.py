@@ -39,11 +39,11 @@ def test_exact_sum_bounds_feasible(n, U):
     assert s.meta["generator"] == "cfs_uniform@1" and F(s.meta["U_reached"]) == U
 
 
-def test_order_sorted_vs_random():
-    srt = cfs_uniform(20, 18, seed=5, order="sorted", **KW)
+def test_order_sorted_by_default_or_random():
+    srt = cfs_uniform(20, 18, seed=5, **KW)
     u = [t.u for t in srt.tasks]
-    assert u == sorted(u, reverse=True)                      # shrimp: task 0 = heaviest
-    rnd = [cfs_uniform(20, 18, seed=k, **KW) for k in range(1, 6)]
+    assert u == sorted(u, reverse=True)                      # default, as in shrimp: task 0 = heaviest
+    rnd = [cfs_uniform(20, 18, seed=k, order="random", **KW) for k in range(1, 6)]
     assert any([t.u for t in s.tasks] != sorted([t.u for t in s.tasks], reverse=True) for s in rnd)
 
 
