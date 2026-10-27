@@ -60,3 +60,60 @@ def test_gen_random_platform(tmp_path):
 def test_gen_bad_arguments(tmp_path, args):
     with pytest.raises(SystemExit):
         main(["gen", *args, "--out", str(tmp_path), "--jobs", "1"])
+
+
+def _gen_file(tmp_path):
+    main(["gen", "--platform", "6,3,2,2,1", "--n", "6", "--U", "10", "--out", str(tmp_path), "--jobs", "1"])
+    return tmp_path / "m5_n6_U10" / "ts_0000.json"
+
+
+def test_simulate_file_and_generator_options_are_the_same_system(tmp_path, capsys):
+    f = _gen_file(tmp_path)
+    assert main(["simulate", str(f), "--scheduler", "pcg_star", "--json", str(tmp_path / "a.json")]) == 0
+    assert main(["simulate", "--platform", "6,3,2,2,1", "--n", "6", "--U", "10", "--scheduler", "pcg_star",
+                 "--json", str(tmp_path / "b.json")]) == 0
+    import json
+    a, b = (json.loads((tmp_path / x).read_text()) for x in ("a.json", "b.json"))
+    assert a["hash"] == b["hash"] and a["metrics"] == b["metrics"] and a["status"] == "ok"
+    assert "VALID" in capsys.readouterr().out
+
+
+def test_simulate_failure_exit_code(tmp_path, capsys):
+    assert main(["simulate", "--platform", "2,1", "--n", "3", "--U", "3", "--scheduler", "g_edf"]) == 1
+    assert "FAILED" in capsys.readouterr().out
+
+
+def test_simulate_random_platform_and_schedule(capsys):
+    assert main(["simulate", "--m", "4", "--n", "6", "--load", "0.8", "--index", "2",
+                 "--scheduler", "wc_pcg_star", "--schedule"]) == 0
+    out = capsys.readouterr().out
+    assert "VALID" in out and "P0 " in out
+
+
+@pytest.mark.parametrize("args", [
+    ["simulate", "--scheduler", "pcg_star"],                                     # no system
+    ["simulate", "--platform", "2,1", "--n", "4", "--U", "1-3", "--scheduler", "pcg_star"],   # ranges
+])
+def test_simulate_bad_arguments(args):
+    with pytest.raises(SystemExit):
+        main(args)
+
+
+def test_simulate_refuses_folder(tmp_path):
+    f = _gen_file(tmp_path)
+    with pytest.raises(SystemExit):
+        main(["simulate", str(f.parent), "--scheduler", "pcg_star"])
+
+
+def test_compare_writes_report(tmp_path, capsys):
+    f = _gen_file(tmp_path)
+    out = tmp_path / "r.html"
+    assert main(["compare", str(f), "--schedulers", "pcg_star,wc_pcg_star,g_edf", "--out", str(out), "--no-open"]) == 0
+    text = capsys.readouterr().out
+    assert out.exists() and "wc_pcg_star" in text and "Job preemptions" in text
+
+
+def test_list(capsys):
+    assert main(["list"]) == 0
+    out = capsys.readouterr().out
+    assert "pcg_star" in out and "wc_pcg_star" in out and "g_edf" in out

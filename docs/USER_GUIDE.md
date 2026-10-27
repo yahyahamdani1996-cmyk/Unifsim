@@ -8,6 +8,7 @@ Contents
 1. [Principle](#1-principle)
 2. [Install](#2-install)
 3. [Quick start](#3-quick-start)
+   - [Command line](#3b-command-line)
 4. [Describing a system](#4-describing-a-system)
    - [Generating task sets](#4b-generating-task-sets)
 5. [Available algorithms](#5-available-algorithms)
@@ -91,6 +92,33 @@ Ready-made scripts, run from the repository root:
 | `python examples/running_example.py` | the paper's running example (Tables 2 and 3) under PCG\* |
 | `python examples/compare_example.py` | PCG\* vs WC-PCG\* vs G-EDF, opens the HTML report |
 | `python examples/simulate_example.py` | a 3-task system under PCG\* and G-EDF |
+
+## 3b. Command line
+
+```bash
+unifsim list                                                          # available schedulers
+
+# one system, one scheduler: validation + metrics
+unifsim simulate Tasksets/m8_n20_U18/ts_0000.json --scheduler pcg_star
+unifsim simulate --platform 8,6,5,4,3,2,1,1 --n 20 --U 18 --scheduler pcg_star     # no file needed
+unifsim simulate --m 8 --n 20 --load 0.67 --index 3 --scheduler wc_pcg_star        # random platform
+unifsim simulate ... --schedule                # also print the schedule
+unifsim simulate ... --json metrics.json       # metrics as JSON
+unifsim simulate ... --horizon 120             # longer than the hyperperiod
+
+# one system, several schedulers: table in the terminal + HTML report
+unifsim compare Tasksets/m8_n20_U18/ts_0000.json --schedulers pcg_star,wc_pcg_star,g_edf
+unifsim compare --platform 6,3,2,2,1 --n 6 --U 10 --schedulers pcg_star,wc_pcg_star --out r.html --no-open
+```
+
+- A system is a JSON file **or** the generator options (`--platform`/`--m`, `--n`,
+  `--U`/`--load`, `--index`, default 0). The options give exactly the set that
+  `unifsim gen` would write (`--index 3` = `ts_0003.json`).
+- `simulate` and `compare` take one system. A folder is refused: many systems is a
+  campaign.
+- `simulate` exits with code 1 if the scheduler fails (deadline miss, invalid
+  decision or schedule) and prints why.
+- `--arrivals periodic` is the default and the only model for now.
 
 ## 4. Describing a system
 
