@@ -13,13 +13,13 @@ from __future__ import annotations
 
 from fractions import Fraction
 
-from .plane import EventType, Job, Proc, assign, compute_next_event, flatten, unassign
+from .plane import EventType, LocalJob, Proc, assign, compute_next_event, flatten, unassign
 
 
 def pcg_star(exec_times, speeds, window_size):
     speeds = sorted(speeds, reverse=True)
     window_size = Fraction(window_size)
-    jobs = sorted((Job(i, Fraction(l)) for i, l in enumerate(exec_times)),
+    jobs = sorted((LocalJob(i, Fraction(l)) for i, l in enumerate(exec_times)),
                   key=lambda j: j.remaining_time, reverse=True)
     processors = [Proc(Fraction(s), window_size, i) for i, s in enumerate(speeds)]
     schedule = [[] for _ in processors]

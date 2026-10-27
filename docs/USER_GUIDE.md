@@ -505,7 +505,7 @@ class MyPCG(DP):
 ```
 
 Each job `i` must execute exactly `budgets[i]` (duration × speed); times are
-relative to the start of the plane. The building blocks of PCG\* (`Proc`, `Job`,
+relative to the start of the plane. The building blocks of PCG\* (`Proc`, `LocalJob`,
 `Event`, `assign`, `unassign`, `compute_next_event`, `flatten`) are in
 `schedulers/dp/local/plane.py`, and `schedulers/dp/local/pcg_star.py` is a full
 example.

@@ -27,7 +27,10 @@ class EventType(Enum):
     B = 0
 
 
-class Job:
+class LocalJob:
+    """A job inside one TL-plane: its index i in the budget list and its remaining budget
+    (not the model Job, which has a release and a deadline)."""
+
     def __init__(self, idx, execution_time):
         self.idx = idx
         self.remaining_time = execution_time
