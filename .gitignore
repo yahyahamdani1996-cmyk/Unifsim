@@ -4,3 +4,4 @@ __pycache__/
 .pytest_cache/
 results/
 report.html
+unifsim_reports/

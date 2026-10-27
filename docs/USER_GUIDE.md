@@ -103,7 +103,7 @@ unifsim simulate Tasksets/m8_n20_U18/ts_0000.json --scheduler pcg_star
 unifsim simulate --platform 8,6,5,4,3,2,1,1 --n 20 --U 18 --scheduler pcg_star     # no file needed
 unifsim simulate --m 8 --n 20 --load 0.67 --index 3 --scheduler wc_pcg_star        # random platform
 unifsim simulate ... --schedule                # also print the schedule
-unifsim simulate ... --gantt                   # Gantt + metrics in the browser (temporary file)
+unifsim simulate ... --gantt                   # Gantt + metrics in the browser
 unifsim simulate ... --gantt --out runs/a.html # same, file kept
 unifsim simulate ... --json metrics.json       # metrics as JSON
 unifsim simulate ... --horizon 120             # longer than the hyperperiod
@@ -113,8 +113,10 @@ unifsim compare Tasksets/m8_n20_U18/ts_0000.json --schedulers pcg_star,wc_pcg_st
 unifsim compare --platform 6,3,2,2,1 --n 6 --U 10 --schedulers pcg_star,wc_pcg_star --out r.html --no-open
 ```
 
-- HTML reports go to a temporary file by default (nothing stored in the project);
-  `--out FILE.html` keeps them, `--no-open` does not open the browser.
+- HTML reports go to `unifsim_reports/` in the current folder by default (ignored
+  by git, only the 20 most recent kept; `UNIFSIM_REPORTS=dir` to change it). Not
+  `/tmp`: Firefox installed as a snap cannot read it. `--out FILE.html` keeps a
+  report where you choose, `--no-open` does not open the browser.
 - `--tikz FILE.tex` is reserved for the LaTeX export of schedules (papers, thesis);
   it is refused until implemented (`src/unifsim/export/tikz.py`).
 

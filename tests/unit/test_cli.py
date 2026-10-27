@@ -122,7 +122,7 @@ def test_list(capsys):
 def test_simulate_gantt_temporary_and_kept(tmp_path, capsys):
     f = _gen_file(tmp_path)
     assert main(["simulate", str(f), "--scheduler", "pcg_star", "--gantt", "--no-open"]) == 0
-    tmp_report = capsys.readouterr().out.strip().splitlines()[-1].split(": ", 1)[1]
+    tmp_report = capsys.readouterr().out.strip().splitlines()[-1].split(": ", 1)[1].split("  (")[0]
     from pathlib import Path
     assert Path(tmp_report).exists() and "<svg" in Path(tmp_report).read_text()
     Path(tmp_report).unlink()

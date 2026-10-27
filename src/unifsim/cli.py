@@ -194,18 +194,25 @@ def system_line(system, name) -> str:
             f"U={system.U} ({float(system.U):.3f}) H={system.hyperperiod}  {feas}")
 
 
+REPORTS_KEPT = 20
+
+
 def html_path(a, stem) -> Path:
-    """--out if given (kept), otherwise a temporary file (nothing stored in the project)."""
+    """--out if given (kept), otherwise unifsim_reports/ in the current folder, keeping
+    only the REPORTS_KEPT most recent files. Not /tmp: Firefox installed as a snap
+    (Ubuntu) has a private /tmp and cannot open files written there."""
     if a.out:
         return Path(a.out)
-    import tempfile
-    fd, name = tempfile.mkstemp(prefix=f"unifsim_{stem}_", suffix=".html")
-    os.close(fd)
-    return Path(name)
+    folder = Path(os.environ.get("UNIFSIM_REPORTS", "unifsim_reports"))
+    folder.mkdir(parents=True, exist_ok=True)
+    old = sorted(folder.glob("unifsim_*.html"), key=lambda f: f.stat().st_mtime)
+    for f in old[: max(0, len(old) - (REPORTS_KEPT - 1))]:
+        f.unlink(missing_ok=True)
+    return folder / f"unifsim_{stem}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getpid()}.html"
 
 
 def show(path: Path, kept: bool, open_it: bool) -> None:
-    print(f"\n{'report' if kept else 'temporary report'}: {path.resolve()}")
+    print(f"\nreport: {path.resolve()}" + ("" if kept else f"  (last {REPORTS_KEPT} kept)"))
     if open_it:
         import webbrowser
         webbrowser.open(path.resolve().as_uri())
