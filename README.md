@@ -35,7 +35,15 @@ compare(system, ["pcg_star", "wc_pcg_star", "g_edf"], "report.html")
 
 `pcg_star` (DP-fair allocation), `wc_pcg_star` (WK allocation, remaining-time
 order), `wc_pcg_star_idx` (WK allocation, index order), `pcg_star_online` /
-`wc_pcg_star_online` (decided online, shrimp port), `g_edf`.
+`wc_pcg_star_online` (decided online, shrimp port), `pcg_star_v2` / `wc_pcg_star_v2`
+(all the events of an instant together, Algorithms 1–2 of the paper), `g_edf`.
+
+## Campaigns
+
+```bash
+unifsim campaign campaigns/pcg_star_v1_v2.toml      # run or resume
+unifsim campaign report results/pcg_star_v1_v2      # HTML report
+```
 
 ## Credits
 

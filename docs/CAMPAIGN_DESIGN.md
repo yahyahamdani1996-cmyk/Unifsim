@@ -1,4 +1,6 @@
-# `unifsim campaign`: design (to validate before coding)
+# `unifsim campaign`: design
+
+Implemented in `src/unifsim/campaign/`; usage in the user guide, section 9b.
 
 ## Purpose
 
@@ -50,7 +52,8 @@ For each grid point, for each set index `0 .. count-1`:
 3. write one row per (set, scheduler).
 
 The run never stops on a failed simulation, and it is resumable: rows already written are
-skipped. It runs in parallel over the cores (`--jobs`, default: all), shows progress (points,
+skipped. `count`, `schedulers` and `description` may change between two runs (to extend a
+campaign); any other change is refused (`--restart` deletes the results). It runs in parallel over the cores (`--jobs`, default: all), shows progress (points,
 sets per second, time remaining), and is reproducible: the folder keeps the spec, the unifsim
 version and the git commit.
 

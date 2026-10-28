@@ -3,6 +3,7 @@
   gen       generate task sets (files or banks)
   simulate  one system, one scheduler: validation + metrics (+ schedule)
   compare   one system, several schedulers: metrics side by side + HTML report
+  campaign  many schedulers on many generated sets (spec file), resumable; `campaign report DIR`
   list      available schedulers
 
 A system is given either as a JSON file, or by the generator options
@@ -295,6 +296,35 @@ def cmd_compare(a) -> int:
     return 0
 
 
+def cmd_campaign(a) -> int:
+    from .campaign import SpecError
+
+    if a.target == "report":
+        if not a.folder:
+            raise SystemExit("unifsim campaign report: give the results folder, e.g. results/pcg_star_v1_v2")
+        from .campaign.report import write_report
+        folder = Path(a.folder)
+        if not (folder / "rows.csv").exists():
+            raise SystemExit(f"unifsim campaign report: {folder}/rows.csv not found")
+        path = write_report(folder, a.report_out)
+        print(f"report: {path.resolve()}")
+        if not a.no_open:
+            import webbrowser
+            webbrowser.open(path.resolve().as_uri())
+        return 0
+    if a.folder:
+        raise SystemExit("unifsim campaign: one spec file (or: unifsim campaign report FOLDER)")
+    from .campaign import run_campaign
+    try:
+        folder = run_campaign(a.target, out=a.out, jobs=a.jobs, restart=a.restart)
+    except SpecError as e:
+        raise SystemExit(f"unifsim campaign: {e}")
+    if a.report:
+        from .campaign.report import write_report
+        print(f"report: {write_report(folder).resolve()}")
+    return 0
+
+
 def cmd_list(a) -> int:
     from .schedulers.registry import REGISTRY
 
@@ -353,6 +383,23 @@ def build_parser() -> argparse.ArgumentParser:
     one_system(c)
     c.add_argument("--schedulers", required=True, help="comma separated, e.g. pcg_star,wc_pcg_star,g_edf")
     c.set_defaults(func=cmd_compare)
+
+    ca = sub.add_parser("campaign", help="run a campaign from a spec file, or write its report",
+                        formatter_class=argparse.RawDescriptionHelpFormatter,
+                        description="Run every scheduler on every set of every grid point; one CSV row per "
+                                    "(set, scheduler); resumable (rerun the same command).\n"
+                                    "  unifsim campaign campaigns/pcg_star_v1_v2.toml\n"
+                                    "  unifsim campaign report results/pcg_star_v1_v2\n"
+                                    "Spec format: docs/CAMPAIGN_DESIGN.md")
+    ca.add_argument("target", help="spec file (.toml), or the word report")
+    ca.add_argument("folder", nargs="?", default=None, help="with report: the results folder")
+    ca.add_argument("--out", default="results", help="results root folder (results/<name>/)")
+    ca.add_argument("--jobs", type=int, default=os.cpu_count() or 1, help="parallel workers")
+    ca.add_argument("--restart", action="store_true", help="delete the existing results of this campaign first")
+    ca.add_argument("--report", action="store_true", help="write the HTML report at the end")
+    ca.add_argument("--report-out", dest="report_out", default=None, help="with report: HTML file (default: FOLDER/report.html)")
+    ca.add_argument("--no-open", action="store_true", help="with report: do not open the browser")
+    ca.set_defaults(func=cmd_campaign)
 
     li = sub.add_parser("list", help="list the available schedulers")
     li.set_defaults(func=cmd_list)

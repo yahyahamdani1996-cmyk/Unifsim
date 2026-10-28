@@ -307,6 +307,8 @@ report and, later, in campaigns.
 | `wc_pcg_star_idx` | WC-PCG\* with jobs taken by task index | DP |
 | `pcg_star_online` | PCG\* decided online at every scheduling point (port of shrimp `pcg_etoile_tl`), DP-fair allocation | DP (`DPOnline`) |
 | `wc_pcg_star_online` | same, WK allocation | DP (`DPOnline`) |
+| `pcg_star_v2` | PCG\* with all the events of an instant handled together (Algorithms 1–2 of the ECRTS paper), DP-fair allocation | DP |
+| `wc_pcg_star_v2` | same, WK allocation | DP |
 | `g_edf` | Global EDF: earliest deadline on the fastest processor | global, not optimal for m > 1 |
 
 `pcg_star` computes each TL-plane at its start (reference implementation);
@@ -458,6 +460,57 @@ shown as `failed` with its error; the others are still displayed.
 To get one algorithm's result without a page: `from unifsim.gui import run;
 run(system, "pcg_star")` returns `{"trace", "metrics", "error"}`.
 
+## 9b. Campaigns
+
+A campaign runs several algorithms on the **same** reproducible task sets over a grid
+of parameters and writes one CSV row per (set, algorithm). Design:
+[CAMPAIGN_DESIGN.md](CAMPAIGN_DESIGN.md).
+
+```bash
+unifsim campaign campaigns/pcg_star_v1_v2.toml        # run; rerun the same command to resume
+unifsim campaign report results/pcg_star_v1_v2        # HTML report (results/<name>/report.html)
+```
+
+The spec file (TOML):
+
+```toml
+name       = "pcg_star_v1_v2"                 # results/<name>/
+schedulers = ["pcg_star", "pcg_star_v2"]      # one or more, all on the same sets
+count      = 100                              # sets per grid point
+seed       = 2026
+
+[grid]                                        # cartesian product, same options as `unifsim gen`
+n      = [8, 16]                              # or "8-40/4"
+m      = [4, 8]                               # random platform per set (or platform = "8,6,5,4,3,2,1,1")
+speeds = "1-10"
+load   = "0.5-1/0.1"                          # or U = "6-30" with a fixed platform
+
+[generator]                                   # optional, defaults of `unifsim gen`
+periods = [2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60]
+
+# tasksets = "Tasksets/m8_n20_U18"            # instead of [grid]: run on existing `unifsim gen` files
+```
+
+- **Same sets as `unifsim gen`**: a point `m8_n20_U18` with the same seed and options
+  gives exactly the sets of `Tasksets/m8_n20_U18/`, generated on the fly.
+- **Success**: every row has `success` (1/0) and `status`: `ok`, `deadline_miss`
+  (`miss_time`, `miss_job`), `budget_infeasible`, `invalid_decision`, `invalid_trace`,
+  `error`; `generation_error` when a set cannot be drawn (no run, `success` empty).
+  `feasible` is the Horváth test of the set. Metrics only for successful runs.
+- **Failed runs** are saved in `results/<name>/failures/` and replayed with
+  `unifsim simulate <file> --scheduler <name> --gantt`.
+- **Resume / extend**: rerun the same command; done rows are skipped. `count`,
+  `schedulers` and `description` may change between runs (to extend a campaign);
+  any other change is refused (use another name, or `--restart`).
+- `--jobs N` workers (default: all cores); `--out DIR` results root (default `results`).
+- Columns: key (`point, n, m, U, load, index, system_hash, scheduler`), outcome, then the
+  metrics with their shrimp names, exact (`37/5`), plus `_float` columns for plots
+  (pgfplots reads the CSV directly). `schedule_hash` identifies the schedule, so
+  identical schedules of two algorithms can be counted.
+- The report gives success ratios (all sets, feasible sets), means ± 95% CI, curves vs
+  U or load, and a paired comparison with the first scheduler (identical schedules,
+  fewer / same / more preemptions on the same sets).
+
 ## 10. Writing your own algorithm
 
 There are three cases. In all of them the engine, the validator, the metrics and
@@ -545,6 +598,7 @@ PCGStar(budget=my_allocation)
 ```
 Unifsim/
 ├── examples/                 scripts to run
+├── campaigns/                campaign spec files (.toml)
 ├── docs/USER_GUIDE.md        this guide
 ├── src/unifsim/
 │   ├── model/                Task, Job, Platform, System
@@ -558,6 +612,7 @@ Unifsim/
 │   ├── trace/                Trace, Segment, PlaneRecord
 │   ├── validate/             validate(), rules V0–V7
 │   ├── metrics/              compute_metrics(), Metrics
+│   ├── campaign/             spec (TOML), runner (rows.csv), report (HTML)
 │   └── gui/                  compare(), run(): HTML report
 └── tests/
     ├── unit/                 model, engine, DP, metrics, report
@@ -587,4 +642,4 @@ PYTHONPATH=/path/to/pcg-main/src:/path/to/pcg-main pytest tests/oracle
 - Uniform platforms only (one speed per processor).
 - No preemption or migration overheads.
 - The report is a static page: the system and the algorithms are chosen in the script.
-- Not yet: campaigns, sporadic arrivals (the arrival model is in place, only `Periodic` exists).
+- Not yet: sporadic arrivals (the arrival model and the campaign keys are in place, only `Periodic` exists), TikZ export.

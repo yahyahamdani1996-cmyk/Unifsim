@@ -1,0 +1,19 @@
+# PCG*: reference implementation (one event at a time, A. Bertout) vs v2 (all the events
+# of an instant together, Algorithms 1-2 of the ECRTS 2026 paper), both allocations.
+#   unifsim campaign campaigns/pcg_star_v1_v2.toml
+#   unifsim campaign report results/pcg_star_v1_v2
+
+name        = "pcg_star_v1_v2"
+description = "PCG* reference vs v2, DP-fair and WK allocations"
+schedulers  = ["pcg_star", "pcg_star_v2", "wc_pcg_star", "wc_pcg_star_v2"]
+count       = 100
+seed        = 2026
+
+[grid]
+n      = [8, 16]
+m      = [4, 8]
+speeds = "1-10"
+load   = "0.5-1/0.1"
+
+[generator]
+periods = [2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60]
