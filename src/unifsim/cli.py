@@ -317,6 +317,9 @@ def cmd_campaign(a) -> int:
         return 0
     if a.folder:
         raise SystemExit("unifsim campaign: one spec file (or: unifsim campaign report FOLDER)")
+    if (a.x != "auto" or a.no_open or a.report_out) and not a.report:
+        raise SystemExit("unifsim campaign: --x, --no-open and --report-out are report options: "
+                         "unifsim campaign report results/<name> --x n  (or add --report to this run)")
     from .campaign import run_campaign
     try:
         folder = run_campaign(a.target, out=a.out, jobs=a.jobs, restart=a.restart)
@@ -324,7 +327,7 @@ def cmd_campaign(a) -> int:
         raise SystemExit(f"unifsim campaign: {e}")
     if a.report:
         from .campaign.report import write_report
-        print(f"report: {write_report(folder).resolve()}")
+        print(f"report: {write_report(folder, a.report_out, a.x).resolve()}")
     return 0
 
 
