@@ -62,7 +62,8 @@ def handle_events(E, jobs, processors, schedule, t, window_size):
                 free_jobs.append(l_job)
 
         assign(j_job, piK)
-        schedule[piK.idx].append((j_job.idx, (t, window_size)))        
+        if j_job.remaining_time != 0:   # simultaneous C-B-event at the end of the plane: no empty piece
+            schedule[piK.idx].append((j_job.idx, (t, window_size)))
         jobs.remove(j_job)
         processors.remove(piK)
 
