@@ -49,8 +49,15 @@ def _mean_ci(xs):
     return mu, 1.96 * sd / math.sqrt(k), k
 
 
-def _point_axes(folder: Path, rows):
-    """point -> (group label, x label, x value) from the spec; falls back to the mean load."""
+X_CHOICES = ("auto", "n", "m", "U", "load")
+
+
+def _point_axes(folder: Path, rows, x="auto"):
+    """point -> (group label, x label, x value, sort key).
+
+    x: the grid dimension drawn on the x axis ("n", "m", "U" or "load"); the other
+    dimensions define the groups (one card of curves per group). "auto": the
+    utilization if it varies, otherwise n, otherwise m."""
     from .spec import parse
     try:
         spec = parse((folder / "spec.toml").read_text(encoding="utf-8"))
@@ -61,18 +68,40 @@ def _point_axes(folder: Path, rows):
     for r in rows:
         if r["load"]:
             loads[r["point"]].append(float(Fraction(r["load"])))
-    out = {}
-    for p in {r["point"] for r in rows}:
-        if p in info:
-            n, m, kind, value = info[p]
-            out[p] = (f"n = {n}, m = {m}", "U" if kind == "U" else "load", float(value), (n, m))
-        else:
+    names = {r["point"] for r in rows}
+    if not info or not names <= set(info):
+        out = {}
+        for p in names:
             ls = loads.get(p) or [0.0]
             out[p] = ("sets from files", "mean load", sum(ls) / len(ls), (0, 0))
+        return out
+
+    kind = info[next(iter(names))][2]                    # "U" or "load", the same for every point
+    varies = {d: len({_dim(info[p], d) for p in names}) > 1 for d in ("n", "m", kind)}
+    if x == "auto":
+        x = next((d for d in (kind, "n", "m") if varies[d]), kind)
+    if x in ("U", "load") and x != kind:
+        raise ValueError(f"--x {x}: this campaign varies {kind}, not {x}")
+    if x not in ("n", "m", "U", "load"):
+        raise ValueError(f"--x must be one of {X_CHOICES}")
+    others = [d for d in ("n", "m", kind) if d != x]
+    out = {}
+    for p in names:
+        group = ", ".join(f"{d} = {_label(_dim(info[p], d))}" for d in others)
+        out[p] = (group, x, float(_dim(info[p], x)), tuple(_dim(info[p], d) for d in others))
     return out
 
 
-def summarize(folder):
+def _dim(info, d):
+    n, m, kind, value = info
+    return {"n": n, "m": m}.get(d, value)
+
+
+def _label(v):
+    return f"{float(v):g}" if isinstance(v, Fraction) else str(v)
+
+
+def summarize(folder, x="auto"):
     folder = Path(folder)
     with open(folder / "rows.csv", newline="", encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
@@ -85,7 +114,7 @@ def summarize(folder):
         schedulers = [s for s in order if s in schedulers] + [s for s in schedulers if s not in order]
     except Exception:                        # noqa: BLE001
         pass
-    axes = _point_axes(folder, rows)
+    axes = _point_axes(folder, rows, x)
     points = sorted(axes, key=lambda p: (axes[p][3], axes[p][0], axes[p][2], p))
 
     groups = defaultdict(list)
@@ -198,9 +227,9 @@ def _legend(schedulers):
         f'<span><i class="sw s{i % len(SERIES)}"></i>{html.escape(s)}</span>' for i, s in enumerate(schedulers)) + "</div>"
 
 
-def write_report(folder, path=None) -> Path:
+def write_report(folder, path=None, x="auto") -> Path:
     folder = Path(folder)
-    S = summarize(folder)
+    S = summarize(folder, x)
     scheds, points, axes, cell = S["schedulers"], S["points"], S["axes"], S["cell"]
     slot = {s: i % len(SERIES) for i, s in enumerate(scheds)}
     meta = {}

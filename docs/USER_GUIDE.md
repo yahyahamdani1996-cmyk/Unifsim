@@ -507,9 +507,13 @@ periods = [2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60]
   metrics with their shrimp names, exact (`37/5`), plus `_float` columns for plots
   (pgfplots reads the CSV directly). `schedule_hash` identifies the schedule, so
   identical schedules of two algorithms can be counted.
-- The report gives success ratios (all sets, feasible sets), means ± 95% CI, curves vs
-  U or load, and a paired comparison with the first scheduler (identical schedules,
+- The report gives success ratios (all sets, feasible sets), means ± 95% CI, curves and
+  a paired comparison with the first scheduler (identical schedules,
   fewer / same / more preemptions on the same sets).
+- Curves: the x axis is a grid dimension, the other dimensions make the groups (one card
+  of curves per group). By default U/load if it varies, otherwise n, otherwise m; force it
+  with `--x n|m|U|load`, e.g. `unifsim campaign report results/<name> --x n`. A curve needs
+  at least 2 values on the x axis.
 
 ## 10. Writing your own algorithm
 

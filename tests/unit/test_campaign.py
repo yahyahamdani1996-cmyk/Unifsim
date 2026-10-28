@@ -145,3 +145,17 @@ def test_cli(tmp_path, capsys):
     assert "done: 24 runs" in capsys.readouterr().out
     assert main(["campaign", "report", str(tmp_path / "res" / "t"), "--no-open"]) == 0
     assert (tmp_path / "res" / "t" / "report.html").exists()
+
+
+def test_report_x_axis(tmp_path):
+    folder = run_campaign(write(tmp_path, SPEC), out=tmp_path / "results", jobs=1, quiet=True)
+    auto = summarize(folder)["axes"]                     # U varies: x = U, groups by n
+    assert auto["m3_n4_U6"][:3] == ("n = 4, m = 3", "U", 6.0)
+    by_n = summarize(folder, x="n")["axes"]              # x = n, groups by U
+    assert by_n["m3_n6_U4"][:3] == ("m = 3, U = 4", "n", 6.0)
+    with pytest.raises(ValueError, match="varies U, not load"):
+        summarize(folder, x="load")
+    one_u = SPEC.replace('U        = "4-6/2"', "U = 4").replace('name       = "t"', 'name = "u"')
+    folder = run_campaign(write(tmp_path, one_u), out=tmp_path / "results", jobs=1, quiet=True)
+    assert summarize(folder)["axes"]["m3_n6_U4"][1] == "n"            # only n varies: auto picks n
+    assert "<svg" in write_report(folder).read_text()
