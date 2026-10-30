@@ -88,3 +88,58 @@ def greedy_wk(order: str = "remaining", epsilon=Fraction(0)):
 
     policy.__name__ = f"greedy_wk_{order}"
     return policy
+
+
+def greedy_paper(order: str = "remaining"):
+    """Work-conserving allocation exactly as Algorithm 2 of the WC-PCG* paper:
+    a single pass over the candidate list C, each job popped once and given the
+    largest increase allowed by the current residuals, never put back in C
+    (port of shrimp greedy_paper).
+
+    C = jobs below their upper bound, taken in non-increasing order of b_inf,
+    then stably sorted by `order`:
+      order = "remaining": non-decreasing remaining work (the paper's experiments)
+      order = "index"    : task id
+    """
+    if order not in ("remaining", "index"):
+        raise ValueError(f"order must be 'remaining' or 'index', got {order!r}")
+
+    def policy(jobs, plane, scheduler, view):
+        t0, t1 = plane
+        length = t1 - t0
+        speeds = scheduler.platform.speeds
+        m = len(speeds)
+        lo, hi = zip(*(bounds(j, plane, scheduler, view) for j in jobs)) if jobs else ((), ())
+        b = dict(zip(jobs, lo))
+        upper = dict(zip(jobs, hi))
+        Hk = [length * sum(speeds[: k + 1]) for k in range(m - 1)]   # H_1..H_{m-1}
+        Hm = length * sum(speeds)                                     # H_m
+
+        ranked = sorted(jobs, key=lambda j: b[j], reverse=True)       # stable
+        C = [j for j in ranked if b[j] < upper[j]]
+        if order == "remaining":
+            C.sort(key=lambda j: view.remaining(j))                    # stable: ties keep b_inf order
+        else:
+            C.sort(key=lambda j: j.task_id)
+        Rm = Hm - sum(b.values())
+
+        while C and Rm > 0:
+            j = C.pop(0)
+            p = ranked.index(j)
+            R, prefix = [], Fraction(0)
+            for k in range(m - 1):
+                if k < len(ranked):
+                    prefix += b[ranked[k]]
+                R.append(Hk[k] - prefix)
+            delta = min(upper[j] - b[j], Rm)
+            for k in range(min(p, m - 1)):          # prefixes the job would enter
+                delta = min(delta, R[k] + b[ranked[k]] - b[j])
+            for k in range(p, m - 1):               # prefixes it already belongs to
+                delta = min(delta, R[k])
+            b[j] += delta
+            Rm -= delta
+            ranked = sorted(jobs, key=lambda x: b[x], reverse=True)
+        return [b[j] for j in jobs]
+
+    policy.__name__ = f"greedy_paper_{order}"
+    return policy
