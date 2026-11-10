@@ -27,8 +27,11 @@ class ValidationError(Exception):
         super().__init__(f"[{code}] {message}")
 
 
-def _expected_jobs(taskset, horizon):
-    """(task_id, k) -> (release, deadline, C, task), recomputed from the tasks."""
+def _expected_jobs(taskset, horizon, arrivals=None):
+    """(task_id, k) -> (release, deadline, C, task), recomputed from the tasks
+    (periodic), or taken from the arrival model when one is given."""
+    if arrivals is not None:
+        return {(j.task_id, j.k): (j.release, j.deadline, j.C) for j in arrivals.jobs(taskset, horizon)}
     out = {}
     for task in taskset.tasks:
         k = 0
@@ -39,12 +42,12 @@ def _expected_jobs(taskset, horizon):
     return out
 
 
-def validate(taskset, trace) -> None:
+def validate(taskset, trace, arrivals=None) -> None:
     H = Fraction(trace.horizon)
     speeds = taskset.platform.speeds
     if trace.m != len(speeds):
         raise ValidationError("V0", f"trace has m={trace.m}, platform has {len(speeds)}")
-    expected = _expected_jobs(taskset, H)
+    expected = _expected_jobs(taskset, H, arrivals)
 
     per_proc = defaultdict(list)
     per_job = defaultdict(list)

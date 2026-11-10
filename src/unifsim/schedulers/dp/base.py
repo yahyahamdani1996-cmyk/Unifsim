@@ -38,17 +38,25 @@ class DP(Scheduler):
         super().init(taskset, horizon)
         if not all(t.implicit for t in taskset.tasks):
             raise NotImplementedError("DP v1: implicit deadlines only")
-        bounds = {Fraction(0), Fraction(horizon)}
-        for t in taskset.tasks:
-            d = t.T
-            while d < horizon:
-                bounds.add(Fraction(d))
-                d += t.T
-        self.boundaries = sorted(bounds)
-        self._plane_idx = -1
+        self.T_min = min(t.T for t in taskset.tasks)
+        self._deadlines = []     # absolute deadlines of released jobs (known deadlines)
         self._t1 = Fraction(0)
         self._plan = []          # (proc, job, start, end), absolute times
         self._planes = []
+
+    def on_release(self, job, t):
+        self._deadlines.append(job.deadline)
+
+    def plane_end(self, t0):
+        """End of the TL-plane opened at t0 (PCG-S paper, eq. 5):
+        t_f = min(d_next, t0 + T_min), clipped to the horizon, where d_next is the
+        earliest known absolute deadline: deadline > t0 of a job released at or
+        before t0 (completed or not). None if no such job (no plane: idle).
+        Periodic synchronous releases: d_next <= t0 + T_min, so t_f = d_next."""
+        self._deadlines = [d for d in self._deadlines if d > t0]
+        if not self._deadlines:
+            return None
+        return min(min(self._deadlines), t0 + self.T_min, Fraction(self.horizon))
 
     def decide(self, t, view):
         if t >= self._t1:
@@ -69,9 +77,12 @@ class DP(Scheduler):
 
     # -------------------------------------------------------------- internals
     def _new_plane(self, t, view):
-        t0, t1, local = self._plane_budgets(t, view)
-        length, speeds = t1 - t0, self.platform.speeds
         self._plan = []
+        opened = self._plane_budgets(t, view)
+        if opened is None:
+            return
+        t0, t1, local = opened
+        length, speeds = t1 - t0, self.platform.speeds
         if not local:
             return
         plan = self.schedule_plane([b for _, b in local], speeds, length)
@@ -82,10 +93,15 @@ class DP(Scheduler):
 
     def _plane_budgets(self, t, view):
         """Start of the plane at t: boundaries, budgets, checks, PlaneRecord.
-        Returns (t0, t1, [(job, budget > 0)]), jobs in (task id, k) order.
+        Returns (t0, t1, [(job, budget > 0)]), jobs in (task id, k) order,
+        or None if no plane is opened (no known deadline after t: idle until
+        the next release, at which the engine calls decide again).
         Shared by DP (whole plane computed here) and DPOnline (decided online)."""
-        self._plane_idx = self.boundaries.index(t)   # t is always a boundary here
-        t0, t1 = t, self.boundaries[self._plane_idx + 1]
+        t1 = self.plane_end(t)
+        if t1 is None:
+            self._t1 = t
+            return None
+        t0 = t
         self._t1 = t1
         length = t1 - t0
         speeds = self.platform.speeds

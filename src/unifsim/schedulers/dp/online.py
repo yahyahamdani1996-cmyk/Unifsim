@@ -42,7 +42,10 @@ class DPOnline(DP):
     def decide(self, t, view):
         self._view = view
         if t >= self._t1:
-            t0, t1, local = self._plane_budgets(t, view)
+            opened = self._plane_budgets(t, view)
+            if opened is None:
+                return Decision(assignment={}, wake_at=None)
+            t0, t1, local = opened
             self._budget = dict(local)
             self._rem0 = {j: view.remaining(j) for j, _ in local}
             self.plane_start(t0, t1, [j for j, _ in local], self._budget)

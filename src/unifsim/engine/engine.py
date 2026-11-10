@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from fractions import Fraction
 
-from ..model.arrivals import Periodic
+from ..model.arrivals import Periodic, Sporadic
 from ..model.system import System
 from ..schedulers.base import Decision, Scheduler, View
 from ..trace.trace import Trace
@@ -20,8 +20,8 @@ class Engine:
         self.taskset = taskset
         self.scheduler = scheduler
         self.arrivals = Periodic() if arrivals is None else arrivals
-        if not isinstance(self.arrivals, Periodic):
-            raise NotImplementedError("v1: periodic arrivals only")
+        if not isinstance(self.arrivals, (Periodic, Sporadic)):
+            raise NotImplementedError("arrivals: Periodic or Sporadic only")
         self.platform = taskset.platform
         self.horizon = Fraction(taskset.hyperperiod if horizon is None else horizon)
         if self.horizon <= 0:
