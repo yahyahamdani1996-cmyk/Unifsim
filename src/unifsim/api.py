@@ -31,6 +31,6 @@ def run(system, algorithm, horizon=None, arrivals=None) -> Result:
     Raises on a deadline miss, an invalid decision or an invalid schedule."""
     scheduler = make(algorithm) if isinstance(algorithm, str) else algorithm
     trace = simulate(system, scheduler, horizon, arrivals)
-    validate(system, trace)
+    validate(system, trace, arrivals)
     name = algorithm if isinstance(algorithm, str) else getattr(scheduler, "name", type(scheduler).__name__)
-    return Result(system, name, trace, compute_metrics(system, trace))
+    return Result(system, name, trace, compute_metrics(system, trace, arrivals))

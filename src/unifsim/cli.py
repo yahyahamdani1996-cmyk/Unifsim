@@ -224,9 +224,13 @@ def check_tikz(a):
         raise SystemExit("unifsim: --tikz (LaTeX export) is reserved and not implemented yet")
 
 
-def _check_arrivals(a):
-    if a.arrivals != "periodic":
-        raise SystemExit("unifsim: only --arrivals periodic is implemented")
+def _arrivals(a):
+    from .model.arrivals import Sporadic
+    if a.arrivals == "periodic":
+        if a.alpha is not None:
+            raise SystemExit("unifsim: --alpha needs --arrivals sporadic")
+        return None
+    return Sporadic(alpha=Fraction(a.alpha or 0), seed=a.arrival_seed)
 
 
 def cmd_simulate(a) -> int:
@@ -234,12 +238,12 @@ def cmd_simulate(a) -> int:
     from .validate import ValidationError
     from .api import run
 
-    _check_arrivals(a)
+    arrivals = _arrivals(a)
     check_tikz(a)
     system, name = load_system(a, "simulate")
     print(system_line(system, name))
     try:
-        r = run(system, a.scheduler, horizon=a.horizon)
+        r = run(system, a.scheduler, horizon=a.horizon, arrivals=arrivals)
     except (SimulationError, ValidationError) as e:
         print(f"{a.scheduler}  FAILED  {type(e).__name__}: {e}")
         if a.json:
@@ -272,13 +276,13 @@ def cmd_simulate(a) -> int:
 def cmd_compare(a) -> int:
     from .gui.report import ROWS, _fmt, _value, write_report
 
-    _check_arrivals(a)
+    arrivals = _arrivals(a)
     check_tikz(a)
     system, name = load_system(a, "compare")
     print(system_line(system, name))
     algos = [x.strip() for x in a.schedulers.split(",") if x.strip()]
     from .gui.report import run as run_one
-    results = [run_one(system, x, a.horizon) for x in algos]
+    results = [run_one(system, x, a.horizon, arrivals) for x in algos]
 
     width = max(len(x) for x in algos) + 2
     print(f"\n{'':32}" + "".join(f"{x:>{max(width, 12)}}" for x in algos))
@@ -368,7 +372,10 @@ def build_parser() -> argparse.ArgumentParser:
         add_gen_args(sp, required=False)
         sp.add_argument("--index", type=int, default=0, help="with generator options: set number")
         sp.add_argument("--horizon", type=Fraction, default=None, help="simulation length (default: hyperperiod)")
-        sp.add_argument("--arrivals", default="periodic", choices=["periodic"], help="arrival model")
+        sp.add_argument("--arrivals", default="periodic", choices=["periodic", "sporadic"], help="arrival model")
+        sp.add_argument("--alpha", default=None, help="with --arrivals sporadic: gaps T*(1+alpha*U), e.g. 1/2")
+        sp.add_argument("--arrival-seed", dest="arrival_seed", type=int, default=0,
+                        help="with --arrivals sporadic: seed of the release draws")
         sp.add_argument("--out", default=None, help="keep the HTML report in this file (default: temporary file)")
         sp.add_argument("--no-open", action="store_true", help="do not open the report in the browser")
         sp.add_argument("--tikz", default=None, metavar="FILE.tex",

@@ -45,13 +45,13 @@ ROWS = [  # (label, attribute or callable, lower is better?)
 ]
 
 
-def run(system, algorithm: str, horizon=None) -> dict:
+def run(system, algorithm: str, horizon=None, arrivals=None) -> dict:
     """Simulate, validate and measure one algorithm. Never raises: failures are reported."""
     out = {"name": algorithm, "trace": None, "metrics": None, "error": None}
     try:
-        trace = simulate(system, make(algorithm), horizon)
-        validate(system, trace)
-        out["trace"], out["metrics"] = trace, compute_metrics(system, trace)
+        trace = simulate(system, make(algorithm), horizon, arrivals)
+        validate(system, trace, arrivals)
+        out["trace"], out["metrics"] = trace, compute_metrics(system, trace, arrivals)
     except (SimulationError, ValidationError) as e:
         out["error"] = f"{type(e).__name__}: {e}"
     return out

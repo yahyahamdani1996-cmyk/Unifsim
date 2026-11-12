@@ -132,7 +132,7 @@ def _cut(pieces, bounds):
     return out
 
 
-def compute_metrics(system, trace) -> Metrics:
+def compute_metrics(system, trace, arrivals=None) -> Metrics:
     speeds = system.platform.speeds
     H = Fraction(trace.horizon)
 
@@ -176,7 +176,7 @@ def compute_metrics(system, trace) -> Metrics:
         task_mig += sum(1 for a, b in zip(pieces, pieces[1:]) if a[2] != b[2])
 
     # --- response times (completed jobs)
-    released = system.jobs(H)
+    released = system.jobs(H) if arrivals is None else arrivals.jobs(system, H)
     ratios, per_task = [], defaultdict(list)
     n_completed = 0
     for j in released:
