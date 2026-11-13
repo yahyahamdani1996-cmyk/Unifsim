@@ -1,0 +1,17 @@
+name        = "pcg_star_tl_v1_v2"
+description = "PCG* reference (A. Bertout, one event at a time) vs v2 (all events of an instant, paper Algorithms 1-2), DP-fair budgets"
+schedulers  = ["pcg_star", "pcg_star_v2"]
+count       = 100
+seed        = 2026
+
+[grid]
+n        = [8, 16, 32]
+platform = "8,6,5,4,3,2,1,1"
+U        = 30
+
+[generator]
+periods  = [2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60]
+u_min    = "1/100"
+quantum  = "1/10000"
+rounding = "exact_sum"
+order    = "sorted"

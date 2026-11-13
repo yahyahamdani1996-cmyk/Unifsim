@@ -5,6 +5,7 @@ from .dp.pcg_star import PCGStar
 from .dp.pcg_star_online import PCGStarOnline
 from .dp.pcg_star_v2 import PCGStarV2
 from .global_.g_edf import GEDF
+from .dp.pcg import PCG
 
 def _named(scheduler, name):
     scheduler.name = name
@@ -22,6 +23,7 @@ REGISTRY = {
     "pcg_star_v2": lambda: PCGStarV2(budget=dp_fair),
     "wc_pcg_star_v2": lambda: _named(PCGStarV2(budget=greedy_wk("remaining")), "wc_pcg_star_v2"),
     "wc_pcg_star_v2_paper": lambda: _named(PCGStarV2(budget=greedy_paper("remaining")), "wc_pcg_star_v2_paper"),
+    "pcg": lambda: PCG(budget=dp_fair),
 }
 
 
