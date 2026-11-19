@@ -12,6 +12,11 @@ def _named(scheduler, name):
     return scheduler
 
 
+def _dynamic(scheduler, name):
+    scheduler.split = "dynamic"
+    return _named(scheduler, name)
+
+
 REGISTRY = {
     "g_edf": GEDF,
     "pcg_star": lambda: PCGStar(budget=dp_fair),
@@ -24,6 +29,10 @@ REGISTRY = {
     "wc_pcg_star_v2": lambda: _named(PCGStarV2(budget=greedy_wk("remaining")), "wc_pcg_star_v2"),
     "wc_pcg_star_v2_paper": lambda: _named(PCGStarV2(budget=greedy_paper("remaining")), "wc_pcg_star_v2_paper"),
     "pcg": lambda: PCG(budget=dp_fair),
+    # dynamic TL-plane construction (sporadic releases); the names above are static
+    "pcg_star_dyn": lambda: _dynamic(PCGStar(budget=dp_fair), "pcg_star_dyn"),
+    "pcg_star_v2_dyn": lambda: _dynamic(PCGStarV2(budget=dp_fair), "pcg_star_v2_dyn"),
+    "pcg_dyn": lambda: _dynamic(PCG(budget=dp_fair), "pcg_dyn"),
 }
 
 

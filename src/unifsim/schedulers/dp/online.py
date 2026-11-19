@@ -40,6 +40,9 @@ class DPOnline(DP):
         return self._budget[job] - executed
 
     def decide(self, t, view):
+        if self._arrivals:
+            raise NotImplementedError(f"{self.name}: job released inside a TL-plane "
+                                      "(A-event): handled by DP schedulers only")
         self._view = view
         if t >= self._t1:
             opened = self._plane_budgets(t, view)
