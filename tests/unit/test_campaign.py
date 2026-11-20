@@ -44,7 +44,7 @@ def test_points_like_gen():
     (SPEC.replace('"g_edf"', '"nope"'), "unknown scheduler"),
     (SPEC.replace('U        = "4-6/2"', 'U = "4"\nload = 0.5'), "exactly one of U or load"),
     (SPEC.replace('platform = "4,2,1"', 'platform = "4,2,1"\nm = 3'), "exactly one of platform"),
-    (SPEC + '\n[simulation]\narrivals = "sporadic"\n', "only \"periodic\""),
+    (SPEC + '\n[simulation]\narrivals = "sporadic"\n', "alpha: required"),
     (SPEC + '\nfoo = 1\n', "unknown key"),
 ])
 def test_spec_errors(bad, msg):

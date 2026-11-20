@@ -27,7 +27,10 @@ GEN_DEFAULTS = {
     "quantum": "1/10000",
     "rounding": "exact_sum",
     "order": "sorted",
+    "kind": "cfs_uniform",        # or "groups" (PCG*_S paper, Sec. 7.2)
+    "period_range": None,         # groups: integer periods, e.g. "10-100"
 }
+SIM_KEYS = {"arrivals", "horizon", "alpha", "first_release"}
 TOP_KEYS = {"name", "description", "schedulers", "count", "seed", "grid", "generator", "simulation", "tasksets"}
 GRID_KEYS = {"n", "platform", "m", "speeds", "U", "load"}
 
@@ -45,6 +48,8 @@ class Point:
     kind: str                  # "U" or "load"
     value: Fraction
     gen: dict = field(compare=False, hash=False)    # regenerate(**gen, index=i)
+    alpha: Fraction | None = None                    # sporadicity factor, None = periodic
+    sim: dict = field(default_factory=dict, compare=False, hash=False)   # arrivals, horizon
 
 
 @dataclass
@@ -118,13 +123,7 @@ def parse(text: str, source="spec") -> Spec:
     if not isinstance(seed, int) or isinstance(seed, bool):
         raise SpecError("seed: an integer")
 
-    sim = d.get("simulation", {})
-    if set(sim) - {"arrivals", "horizon"}:
-        raise SpecError(f"simulation: unknown key(s) {sorted(set(sim) - {'arrivals', 'horizon'})}")
-    if sim.get("arrivals", "periodic") != "periodic":
-        raise SpecError("simulation.arrivals: only \"periodic\" is implemented (key reserved for sporadic tasks)")
-    if sim.get("horizon", "hyperperiod") != "hyperperiod":
-        raise SpecError("simulation.horizon: only \"hyperperiod\" is implemented")
+    sim, alphas = _simulation(d.get("simulation", {}))
 
     tasksets = d.get("tasksets")
     if tasksets is not None:
@@ -134,7 +133,52 @@ def parse(text: str, source="spec") -> Spec:
         return Spec(name, list(scheds), count, seed, [], p, d, text, d.get("description", ""))
 
     points = _points(d.get("grid"), d.get("generator", {}), seed)
+    if alphas is not None:          # one point per (grid point, alpha), same sets for every alpha
+        from ..cli import label_load
+        points = [Point(f"{p.name}_alpha{label_load(a)}", p.n, p.m, p.kind, p.value, p.gen, a, sim)
+                  for p in points for a in alphas]
+    else:
+        points = [Point(p.name, p.n, p.m, p.kind, p.value, p.gen, None, sim) for p in points]
     return Spec(name, list(scheds), count, seed, points, None, d, text, d.get("description", ""))
+
+
+def _simulation(sim):
+    """[simulation] -> (settings, alphas or None).
+      arrivals      = "periodic" (default) | "sporadic"
+      alpha         = sporadic: list of sporadicity factors (gap T (1 + alpha U), U ~ U(0,1))
+      first_release = sporadic: "random" (default, uniform in [0, T)) | "zero"
+      horizon       = "hyperperiod" (default) | "<k>*Tmax", e.g. "10*Tmax".
+    """
+    if not isinstance(sim, dict):
+        raise SpecError("[simulation] must be a table")
+    unknown = set(sim) - SIM_KEYS
+    if unknown:
+        raise SpecError(f"simulation: unknown key(s) {sorted(unknown)}; allowed: {sorted(SIM_KEYS)}")
+    arrivals = sim.get("arrivals", "periodic")
+    if arrivals not in ("periodic", "sporadic"):
+        raise SpecError("simulation.arrivals: \"periodic\" or \"sporadic\"")
+    horizon = sim.get("horizon", "hyperperiod")
+    if horizon != "hyperperiod":
+        k, _, tail = str(horizon).replace(" ", "").partition("*")
+        if tail != "Tmax":
+            raise SpecError("simulation.horizon: \"hyperperiod\" or \"<k>*Tmax\", e.g. \"10*Tmax\"")
+        k = _values(k, "simulation.horizon")[0]
+        if k <= 0:
+            raise SpecError("simulation.horizon: k must be > 0")
+        horizon = f"{k}*Tmax"
+    if arrivals == "periodic":
+        if "alpha" in sim or "first_release" in sim:
+            raise SpecError("simulation: alpha and first_release need arrivals = \"sporadic\"")
+        return {"arrivals": "periodic", "horizon": horizon}, None
+    if "alpha" not in sim:
+        raise SpecError("simulation.alpha: required with sporadic arrivals, e.g. [0, 0.25, 1]")
+    alphas = _values(sim["alpha"], "simulation.alpha")
+    if any(a < 0 for a in alphas) or len(set(alphas)) != len(alphas):
+        raise SpecError("simulation.alpha: distinct values >= 0")
+    first = sim.get("first_release", "random")
+    if first not in ("random", "zero"):
+        raise SpecError("simulation.first_release: \"random\" or \"zero\"")
+    return {"arrivals": "sporadic", "horizon": horizon, "first_release": first}, alphas
 
 
 def _points(grid, generator, seed):
@@ -175,6 +219,19 @@ def _points(grid, generator, seed):
         raise SpecError("generator.rounding: exact_sum or independent")
     if base["order"] not in ("sorted", "random"):
         raise SpecError("generator.order: sorted or random")
+    from ..gen import GENERATORS
+    if g["kind"] not in GENERATORS:
+        raise SpecError(f"generator.kind: one of {sorted(GENERATORS)}")
+    if g["kind"] != "cfs_uniform":
+        base["generator"] = g["kind"]
+    if g["period_range"] is not None:
+        if g["kind"] != "groups":
+            raise SpecError("generator.period_range: only with kind = \"groups\"")
+        try:
+            lo, hi = (int(x) for x in str(g["period_range"]).split("-"))
+        except ValueError:
+            raise SpecError("generator.period_range: an integer range lo-hi, e.g. \"10-100\"") from None
+        base["period_range"] = (lo, hi)
 
     ns = _ints(grid["n"], "grid.n")
     kind = "U" if "U" in grid else "load"

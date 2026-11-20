@@ -35,9 +35,14 @@ U        = "6-30"                          # fixed platform only
 periods = [2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60]
 u_min   = "1/100"
 
-[simulation]                               # reserved for sporadic tasks
-arrivals = "periodic"                      # only value today
-horizon  = "hyperperiod"                   # only value today
+# kind = "groups"                          # generator of the PCG*_S paper, Sec. 7.2 (default cfs_uniform)
+# period_range = "10-100"                  # groups: integer periods drawn in lo-hi
+
+[simulation]
+arrivals = "periodic"                      # or "sporadic"
+horizon  = "hyperperiod"                   # or "<k>*Tmax", e.g. "10*Tmax"
+# alpha         = [0, 0.25, 1, 3]          # sporadic: gap T (1 + alpha U), one point per alpha
+# first_release = "random"                 # sporadic: "random" (in [0, T)) or "zero"
 
 # tasksets = "Tasksets/m8_n16_U12"         # optional: use existing `unifsim gen` files instead
 ```
@@ -107,5 +112,9 @@ HTML first; LaTeX/pgfplots export later from the same rows.
 
 ## Not in v1
 
-Sporadic arrivals and horizons other than the hyperperiod (keys reserved), TikZ export,
+Sporadic campaigns: every alpha uses the same sets, and a set gets the same
+releases for every alpha and scheduler (Sporadic seeded by the set hash), so the
+runs are paired. Example: campaigns/sec7_2.toml.
+
+TikZ export,
 storing traces (any run can be regenerated from seed, point and index).

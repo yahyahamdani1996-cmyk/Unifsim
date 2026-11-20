@@ -26,8 +26,9 @@ from pathlib import Path
 
 from .spec import SpecError, parse
 
-KEY = ["point", "n", "m", "U", "load", "index", "system_hash", "scheduler"]
-OUTCOME = ["success", "status", "feasible", "miss_time", "miss_job", "error", "runtime_s", "schedule_hash"]
+KEY = ["point", "n", "m", "U", "load", "alpha", "index", "system_hash", "scheduler"]
+OUTCOME = ["success", "status", "feasible", "miss_time", "miss_job", "error", "runtime_s", "schedule_hash",
+           "tl_planes"]
 # statuses; success = 1 only for "ok". "generation_error": no set, success left empty
 STATUSES = ("ok", "deadline_miss", "budget_infeasible", "invalid_decision", "invalid_trace", "error",
             "generation_error")
@@ -97,12 +98,12 @@ def _classify(e):
     return "error"
 
 
-def run_one(system, scheduler):
+def run_one(system, scheduler, horizon=None, arrivals=None):
     """One run -> (outcome dict, metrics row). Never raises."""
     from ..api import run
     t0 = time.perf_counter()
     try:
-        r = run(system, scheduler)
+        r = run(system, scheduler, horizon, arrivals)
     except Exception as e:                      # noqa: BLE001 - every failure becomes a row
         status = _classify(e)
         out = {"success": 0, "status": status, "error": f"{type(e).__name__}: {e}"[:500],
@@ -111,15 +112,33 @@ def run_one(system, scheduler):
             out["miss_time"], out["miss_job"] = str(e.t), e.job.name
         return out, {}
     out = {"success": 1, "status": "ok", "runtime_s": f"{time.perf_counter() - t0:.4f}",
-           "schedule_hash": schedule_hash(r.trace)}
+           "schedule_hash": schedule_hash(r.trace), "tl_planes": len(r.trace.planes) or ""}
     return out, _metric_values(r.metrics)
 
 
-def _key_values(point, system, index, load_value):
+def _key_values(point, system, index, load_value, alpha=None):
     S = sum(system.platform.speeds, Fraction(0))
     load = load_value if load_value is not None else system.U / S
     return {"point": point, "n": system.n, "m": system.platform.m, "U": str(system.U), "load": str(load),
-            "index": index, "system_hash": system.hash}
+            "alpha": "" if alpha is None else alpha, "index": index, "system_hash": system.hash}
+
+
+def _simulation(system, sim):
+    """(horizon, arrivals) of a run from the [simulation] settings. The sporadic
+    releases depend only on the set (its hash), not on alpha or the scheduler:
+    the runs of one set are paired (Sporadic draws the same U for every alpha)."""
+    if not sim:
+        return None, None
+    from ..model.arrivals import Sporadic
+    horizon = None
+    if sim.get("horizon", "hyperperiod") != "hyperperiod":
+        k = Fraction(sim["horizon"].split("*")[0])
+        horizon = k * max(t.T for t in system.tasks)
+    if sim.get("arrivals") != "sporadic":
+        return horizon, None
+    arrivals = Sporadic(alpha=Fraction(sim["alpha"]), seed=int(system.hash[:15], 16),
+                        first_release=sim.get("first_release", "random"))
+    return horizon, arrivals
 
 
 def work(job):
@@ -137,11 +156,13 @@ def work(job):
             return point, index, rows, []
     else:
         system = System.from_dict(source)
-    key = _key_values(point, system, index, load_value)
+    sim = source.get("sim", {}) if isinstance(source, dict) and "gen" in source else {}
+    key = _key_values(point, system, index, load_value, sim.get("alpha"))
+    horizon, arrivals = _simulation(system, sim)
     feasible = int(system.horvath_feasible())
     rows, failures = [], []
     for s in schedulers:
-        out, metrics = run_one(system, s)
+        out, metrics = run_one(system, s, horizon, arrivals)
         rows.append({**key, "scheduler": s, "feasible": feasible, **out, **metrics})
         if out["success"] == 0:
             failures.append((s, out))
@@ -149,7 +170,7 @@ def work(job):
     for s, out in failures:
         d = json.loads(system.to_json())
         d["meta"] = dict(d.get("meta", {}), failure={"scheduler": s, "status": out["status"], "error": out.get("error", ""),
-                                             "point": point, "index": index})
+                                             "point": point, "index": index, **({"simulation": sim} if sim else {})})
         fail_systems.append((f"{point}_ts{index:04d}_{s}.json", d))
     return point, index, rows, fail_systems
 
@@ -200,7 +221,8 @@ def jobs_of(spec):
     for p in spec.points:
         load_value = str(p.value) if p.kind == "load" else None
         for i in range(spec.count):
-            out.append((p.name, i, {"gen": p.gen}, None if load_value is None else Fraction(load_value)))
+            sim = dict(p.sim, **({} if p.alpha is None else {"alpha": str(p.alpha)}))
+            out.append((p.name, i, {"gen": p.gen, "sim": sim}, None if load_value is None else Fraction(load_value)))
     return out
 
 

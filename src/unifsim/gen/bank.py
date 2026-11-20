@@ -19,10 +19,11 @@ from fractions import Fraction
 from ..model.system import System
 from ..model.task import exact
 from .cfs_uniform import GenerationError, cfs_uniform
+from .groups import groups
 from .platforms import random_platform
 from .seeds import derive_seed
 
-GENERATORS = {"cfs_uniform": cfs_uniform}
+GENERATORS = {"cfs_uniform": cfs_uniform, "groups": groups}
 
 
 def set_seed(master_seed, n, U, index) -> int:

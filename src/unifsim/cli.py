@@ -412,7 +412,7 @@ def build_parser() -> argparse.ArgumentParser:
     ca.add_argument("--report", action="store_true", help="write the HTML report at the end")
     ca.add_argument("--report-out", dest="report_out", default=None, help="with report: HTML file (default: FOLDER/report.html)")
     ca.add_argument("--no-open", action="store_true", help="with report: do not open the browser")
-    ca.add_argument("--x", default="auto", choices=["auto", "n", "m", "U", "load"],
+    ca.add_argument("--x", default="auto", choices=["auto", "n", "m", "U", "load", "alpha"],
                     help="with report: grid dimension on the x axis of the curves "
                          "(auto: U/load if it varies, else n, else m); the others make the groups")
     ca.set_defaults(func=cmd_campaign)

@@ -49,7 +49,7 @@ def _mean_ci(xs):
     return mu, 1.96 * sd / math.sqrt(k), k
 
 
-X_CHOICES = ("auto", "n", "m", "U", "load")
+X_CHOICES = ("auto", "n", "m", "U", "load", "alpha")
 
 
 def _point_axes(folder: Path, rows, x="auto"):
@@ -61,7 +61,7 @@ def _point_axes(folder: Path, rows, x="auto"):
     from .spec import parse
     try:
         spec = parse((folder / "spec.toml").read_text(encoding="utf-8"))
-        info = {p.name: (p.n, p.m, p.kind, p.value) for p in spec.points}
+        info = {p.name: (p.n, p.m, p.kind, p.value, p.alpha) for p in spec.points}
     except Exception:                        # noqa: BLE001 - tasksets campaigns or old spec
         info = {}
     loads = defaultdict(list)
@@ -77,14 +77,18 @@ def _point_axes(folder: Path, rows, x="auto"):
         return out
 
     kind = info[next(iter(names))][2]                    # "U" or "load", the same for every point
-    varies = {d: len({_dim(info[p], d) for p in names}) > 1 for d in ("n", "m", kind)}
+    sporadic = info[next(iter(names))][4] is not None
+    dims = ("n", "m", kind) + (("alpha",) if sporadic else ())
+    varies = {d: len({_dim(info[p], d) for p in names}) > 1 for d in dims}
     if x == "auto":
-        x = next((d for d in (kind, "n", "m") if varies[d]), kind)
+        x = next((d for d in (kind, "alpha", "n", "m") if varies.get(d)), kind)
     if x in ("U", "load") and x != kind:
         raise ValueError(f"--x {x}: this campaign varies {kind}, not {x}")
-    if x not in ("n", "m", "U", "load"):
+    if x == "alpha" and not sporadic:
+        raise ValueError("--x alpha: this campaign has periodic arrivals")
+    if x not in dims:
         raise ValueError(f"--x must be one of {X_CHOICES}")
-    others = [d for d in ("n", "m", kind) if d != x]
+    others = [d for d in dims if d != x]
     out = {}
     for p in names:
         group = ", ".join(f"{d} = {_label(_dim(info[p], d))}" for d in others)
@@ -93,8 +97,8 @@ def _point_axes(folder: Path, rows, x="auto"):
 
 
 def _dim(info, d):
-    n, m, kind, value = info
-    return {"n": n, "m": m}.get(d, value)
+    n, m, kind, value, alpha = info
+    return {"n": n, "m": m, "alpha": alpha}.get(d, value)
 
 
 def _label(v):
