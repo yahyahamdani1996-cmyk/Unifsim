@@ -226,7 +226,8 @@ class DP(Scheduler):
             if not 0 <= b <= view.remaining(j):
                 raise BudgetInfeasible(f"t={t0}: budget {b} of {j} outside [0, {view.remaining(j)}]")
         self._check_horvath(budgets, speeds, length, t0)
-        self._check_no_deadline_inside(t0, t1)
+        if not self._late:               # else checked by the A-event at t0, after the split
+            self._check_no_deadline_inside(t0, t1)
         self._planes.append(PlaneRecord(t0, t1, tuple(zip(jobs, budgets))))
 
         # jobs with a zero budget do not take part in the plane

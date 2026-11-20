@@ -59,7 +59,7 @@ def test_t1_1_gets_its_budget_inside_the_plane():
 
 
 # ------------------------------------------------------------------ random sporadic runs
-CASES = [(seed, alpha) for seed in range(12) for alpha in (F(1, 4), 1, 3)]
+CASES = [(seed, alpha) for seed in range(12) for alpha in (0, F(1, 4), 1, 3)]
 
 
 @pytest.mark.parametrize("split", ["", "_dyn"])
